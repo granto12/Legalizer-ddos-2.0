@@ -29,7 +29,7 @@ const JSList = {
     },
     {
       name: "DDoS-Guard-en",
-      navigations: 2,
+      navigations: 1,
       locate: 'document.getElementById("description").innerHTML="This process is automatic. Your browser will redirect to your requested content shortly.<br>Please allow up to 5 seconds...";' // найдите на странице что написанно и возьмите html код. Если будут фиксить 
     }
   ]
