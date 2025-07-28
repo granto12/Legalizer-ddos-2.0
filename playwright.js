@@ -130,8 +130,7 @@ function getRandomUAConfig() {
       viewport: { width: 1920, height: 1080 },
       deviceScaleFactor: 1,
       isMobile: false,
-      hasTouch: false,
-      javaScriptEnabled: true
+      hasTouch: false
     },
     {
       name: 'iPhone Safari',
