@@ -164,11 +164,11 @@ await page.addInitScript(() => {
   window.chrome = { runtime: {} };
 
   Object.defineProperty(navigator, 'languages', {
-    get: () => ['en-US', 'en']
+    get: () => ['ru-RU', 'ru']
   }); из
 
   Object.defineProperty(navigator, 'plugins', {
-    get: () => [1, 2, 3, 4, 5]
+    get: () => [1, 2, 3]
   });
 
   const getParameter = WebGLRenderingContext.prototype.getParameter;
