@@ -7,8 +7,8 @@ const args = {
   Target: "https://legalizer.cc",
   Time: "3600",
   Method: "TLSv1",
-  Rate: "299",
-  Threads: "1"
+  Rate: "450",
+  Threads: "3"
 };
 const JSList = {
   js: [
