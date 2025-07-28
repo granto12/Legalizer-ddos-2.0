@@ -18,9 +18,9 @@ const JSList = {
       locate: '<h2 class="h2" id="challenge-running">'
     },
     {
-      name: "CloudFlare (Normal JS)",// не рабоьает sf в разработке . можеие сами там в html найти бокс кнопки и сделть нажатие. если не забуду скину черкз время.
+      name: "CloudFlare",// 
       navigations: 2,
-      locate: '<div class="cf-browser-verification cf-im-under-attack">'
+      locate: '<title>Just a moment...</title>'
     },
     {
       name: "DDoS-Guard",
