@@ -224,6 +224,48 @@ async function processProtection(page, label) {
   if (detected) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
+if (["CloudFlare"].includes(detected.name)) {
+  try {
+    let redirectHappened = false;
+    while (!redirectHappened) {
+      const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
+      if (!frame) {
+        log(`[${`Playwright`.red}] Фрейм Turnstile не найден.`);
+        break;
+      }
+      const checkbox = await frame.$('input[type="checkbox"]');
+      if (!checkbox) {
+        log(`[${`Playwright`.red}] Чекбокс Turnstile не найден во фрейме.`);
+        break;
+      }
+      const box = await checkbox.boundingBox();
+      if (!box) {
+        log(`[${`Playwright`.red}] Не удалось получить координаты чекбокса Turnstile.`);
+        break;
+      }
+
+      
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+      // 
+      await sleep(5000)
+
+      // Проверяем, сменился ли URL - это будет признаком 
+      
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      
+      await page.waitForNavigation();
+        
+      } else {
+        log(`[${`Playwright`.yellow}] Редирект не произошел, пробую снова...`);
+      }
+    }
+  } catch (e) {
+    log(`[${`Playwright`.red}] Ошибка при обработке Turnstile: ${e.message}`);
+  }
+}
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
         await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
