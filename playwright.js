@@ -245,7 +245,7 @@ if (["CloudFlare"].includes(detected.name)) {
       }
 
       
-      await sleep(2500)
+      await sleep(8800)
 
       // Проверяем, сменился ли URL - это будет признаком 
       
