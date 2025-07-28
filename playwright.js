@@ -129,7 +129,8 @@ function getRandomUAConfig() {
       viewport: { width: 1920, height: 1080 },
       deviceScaleFactor: 1,
       isMobile: false,
-      hasTouch: false
+      hasTouch: false,
+      javaScriptEnabled: true
     },
     {
       name: 'iPhone Safari',
@@ -137,7 +138,8 @@ function getRandomUAConfig() {
       viewport: { width: 390, height: 844 },
       deviceScaleFactor: 3,
       isMobile: true,
-      hasTouch: true
+      hasTouch: true,
+      javaScriptEnabled: true
     }
   ];
   return configs[Math.floor(Math.random() * configs.length)];
@@ -151,7 +153,7 @@ const context = await browser.newContext({
   viewport: uaConfig.viewport,
   deviceScaleFactor: uaConfig.deviceScaleFactor,
   isMobile: uaConfig.isMobile,
-  hasTouch: uaConfig.hasTouch
+  hasTouch: uaConfig.hasTouch,
   javaScriptEnabled: true
 });
 
