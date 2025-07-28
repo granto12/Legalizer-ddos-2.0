@@ -245,11 +245,7 @@ if (["CloudFlare"].includes(detected.name)) {
       }
 
       
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
-      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-
-      // 
-      await sleep(5000)
+      await sleep(2000)
 
       // Проверяем, сменился ли URL - это будет признаком 
       
