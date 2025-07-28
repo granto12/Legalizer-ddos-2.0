@@ -89,6 +89,7 @@ async function solverInstance(args) {
 
 const browser = await playwright.chromium.launch({
   headless: true,
+  deviceScaleFactor: 2,
   proxy: {
     server: `http://${args.Proxy}`
   },
