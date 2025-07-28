@@ -5,10 +5,10 @@ require('events').EventEmitter.defaultMaxListeners = Infinity;
 
 const args = {
   Target: "https://legalizer.cc",
-  Time: "50",
+  Time: "5000",
   Method: "TLSv1",
-  Rate: "50",
-  Threads: "50"
+  Rate: "150",
+  Threads: "5"
 };
 const JSList = {
   js: [
