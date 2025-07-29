@@ -4,7 +4,7 @@ const { spawn } = require('child_process');
 require('events').EventEmitter.defaultMaxListeners = Infinity;
 
 const args = {
-  Target: "https://legalizer.cc/login",
+  Target: "https://google.cc/",
   Time: "5000",
   Method: "TLSv1",
   Rate: "40",
