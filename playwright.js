@@ -263,6 +263,36 @@ if (detected.name === "CloudFlare2") {
       try {
         await page.waitForNavigation({ timeout: 10000 });
         log(`[${'Playwright'.green}] Навигация после нажатия кнопки прошла успешно.`);
+        
+        // После редиректа запускаем проверку CloudFlare и JD Detection
+        let triggerDetected = true;
+        while (triggerDetected) {
+          const htmlAfterRedirect = await page.content();
+          const titleAfterRedirect = await page.title();
+
+          // Повторная проверка через JSDetection
+          const detectedAfterRedirect = JSDetection(htmlAfterRedirect);
+          if (detectedAfterRedirect) {
+            log(`[${'Playwright'.yellow}] Обнаружен триггер после редиректа: ${detectedAfterRedirect.name}`);
+            
+            // Выполняем повторную обработку защиты
+            if (["CloudFlare", "CloudFlare2"].includes(detectedAfterRedirect.name)) {
+              await processProtection(page, 'Повторная обработка CloudFlare');
+            } else if (["DDoS-Guard", "DDoS-Guard-en"].includes(detectedAfterRedirect.name)) {
+              for (let i = 0; i < 5; i++) {
+                await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
+              }
+              await page.mouse.down();
+              await page.mouse.move(100, 100);
+              await page.mouse.up();
+              await sleep(20630);
+              await page.reload({ waitUntil: 'domcontentloaded' });
+            }
+          } else {
+            log(`[${'Playwright'.green}] Триггер не обнаружен, продолжаем.`);
+            triggerDetected = false; // Выходим из цикла, если триггер больше не обнаружен
+          }
+        }
       } catch (e) {
         log(`[${'Playwright'.yellow}] Редирект не произошел: ${e.message}, пробую снова...`);
       }
@@ -273,6 +303,7 @@ if (detected.name === "CloudFlare2") {
     log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare2: ${e.message}`);
   }
 }
+
 
 
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
