@@ -229,38 +229,47 @@ async function processProtection(page, label) {
 if (["CloudFlare"].includes(detected.name)) {
   try {
     let redirectHappened = false;
+
     while (!redirectHappened) {
       const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
       if (!frame) {
-        await sleep(8800)
-        log(`[${`Playwright`.red}] Фрейм Turnstile не найден.`);
+        await sleep(8800);
+        log(`[${'Playwright'.red}] Фрейм Turnstile не найден.`);
         break;
       }
+
       const checkbox = await frame.$('input[type="checkbox"]');
       if (!checkbox) {
-        log(`[${`Playwright`.red}] Чекбокс Turnstile не найден во фрейме.`);
+        log(`[${'Playwright'.red}] Чекбокс Turnstile не найден во фрейме.`);
         break;
       }
+
       const box = await checkbox.boundingBox();
       if (!box) {
-        log(`[${`Playwright`.red}] Не удалось получить координаты чекбокса Turnstile.`);
+        log(`[${'Playwright'.red}] Не удалось получить координаты чекбокса Turnstile.`);
         break;
       }
 
-
-      // Проверяем, сменился ли URL - это будет признаком 
-      
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
       await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-      
-      await page.waitForNavigation();
-        
-      } else {
-        log(`[${`Playwright`.yellow}] Редирект не произошел, пробую снова...`);
+
+      try {
+        const response = await page.waitForNavigation({ timeout: 10000 });
+        if (response) {
+          log(`[${'Playwright'.green}] Навигация прошла успешно`);
+          redirectHappened = true;
+        } else {
+          log(`[${'Playwright'.yellow}] Редирект не произошел, пробую снова...`);
+        }
+      } catch (e) {
+        log(`[${'Playwright'.yellow}] Навигация не произошла: ${e.message}, пробую снова...`);
       }
+
+      await sleep(3000); // пауза между попытками
     }
+
   } catch (e) {
-    log(`[${`Playwright`.red}] Ошибка при обработке Turnstile: ${e.message}`);
+    log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
   }
 }
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
