@@ -4,10 +4,10 @@ const readline = require('readline');
 
 const baseArgs = {
   Target: "https://www.aeroflot.ru/",
-  Time: "5000",
+  Time: "400",
   Method: "TLSv1",
-  Rate: "40",
-  Threads: "20"
+  Rate: "80",
+  Threads: "10"
 };
 
 
