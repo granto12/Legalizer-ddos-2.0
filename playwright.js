@@ -189,12 +189,8 @@ await page.addInitScript(() => {
 });
 
 try {
-    await page.goto(args.Target, { waitUntil: 'domcontentloaded' });
-  } catch (e) {
-    await browser.close();
-    throw e;
-  }
-}
+  await page.goto(args.Target, { waitUntil: 'domcontentloaded' });
+} catch (e) {
 
 log(`(${`PlayWright`.cyan}) UA: ${uaConfig.userAgent.green}`);
 const ua = uaConfig.userAgent
