@@ -207,53 +207,46 @@ async function processProtection(page, label) {
 
 if (detected.name === "CloudFlare") {
   try {
-    let redirectHappened = false;
+    log(`[${'Playwright'.green}] Начата обработка CloudFlare с использованием "managed challenge".`);
 
-    while (!redirectHappened) {
-      // Проверяем наличие фрейма с CloudFlare 
-      const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
-      if (!frame) {
-        await sleep(8800);
-        log(`[${'Playwright'.red}] Фрейм CloudFlare не найден.`);
-        break;
-      }
+    // Ждем загрузки страницы
+    await page.waitForLoadState('domcontentloaded');
 
-      // Ищем checkbox или кнопку для обхода
-      const checkbox = await frame.$('input[type="checkbox"]');
-      if (checkbox) {
-        log(`[${'Playwright'.green}] Найден checkbox для обхода CloudFlare.`);
-        const box = await checkbox.boundingBox();
-        if (box) {
-          // Симуляция клика по checkbox
-          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
-          await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-        }
-      } else {
-        log(`[${'Playwright'.yellow}] Checkbox не найден, пробуем клик по кнопке.`);
-        const button = await frame.$('button');
-        if (button) {
-          await button.click();
-          log(`[${'Playwright'.green}] Кнопка нажата.`);
+    // Выполняем встроенный JavaScript для завершения проверки
+    const managedChallengeResult = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        // Проверяем наличие объекта window._cf_chl_opt, который связан с CloudFlare
+        if (typeof window._cf_chl_opt !== 'undefined') {
+          console.log('CloudFlare challenge detected. Running challenge script...');
+          // Добавляем наблюдение за выполнением скрипта
+          const observer = new MutationObserver(() => {
+            if (document.readyState === 'complete') {
+              observer.disconnect();
+              resolve('Challenge completed');
+            }
+          });
+          observer.observe(document, { attributes: true, childList: true, subtree: true });
         } else {
-          log(`[${'Playwright'.red}] Кнопка для обхода CloudFlare не найдена.`);
-          break;
+          resolve('No challenge detected');
         }
-      }
+      });
+    });
 
-      // Ожидание редиректа после клика
-      try {
-        const response = await page.waitForNavigation({ timeout: 10000 });
-        if (response) {
-          log(`[${'Playwright'.green}] Успешный редирект после обхода.`);
-          redirectHappened = true;
-        } else {
-          log(`[${'Playwright'.yellow}] Редирект не произошел, пробуем снова...`);
-        }
-      } catch (e) {
-        log(`[${'Playwright'.yellow}] Ошибка редиректа: ${e.message}, пробуем снова...`);
-      }
+    // Проверяем результат выполнения
+    if (managedChallengeResult === 'Challenge completed') {
+      log(`[${'Playwright'.green}] Обход CloudFlare завершен успешно.`);
+    } else {
+      log(`[${'Playwright'.yellow}] Обход CloudFlare не требуется или не удалось.`);
+    }
 
-      await sleep(3000); // Даем время для обновления страницы
+    // Ожидание редиректа после завершения проверки
+    try {
+      const response = await page.waitForNavigation({ timeout: 15000 });
+      if (response) {
+        log(`[${'Playwright'.green}] Навигация завершена после обхода.`);
+      }
+    } catch (e) {
+      log(`[${'Playwright'.yellow}] Редирект не произошел: ${e.message}`);
     }
   } catch (e) {
     log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare: ${e.message}`);
