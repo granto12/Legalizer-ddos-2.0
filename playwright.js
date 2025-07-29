@@ -189,7 +189,7 @@ await page.addInitScript(() => {
 });
 
 try {
-    await page.goto(Target, { waitUntil: 'domcontentloaded' });
+    await page.goto(args.Target, { waitUntil: 'domcontentloaded' });
   } catch (e) {
     await browser.close();
     throw e;
