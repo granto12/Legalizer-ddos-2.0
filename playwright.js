@@ -251,18 +251,23 @@ async function processProtection(page, label) {
 
 if (detected.name === "CloudFlare2") {
   try {
-    const clickableElement = await page.$('c[addEventListener="click"]');
-    if (clickableElement) {
-      log(`[${'Playwright'.green}] Элемент для клика найден.`);
-      await clickableElement.click();
+    // Поиск кнопки с указанным классом и атрибутами
+    const proceedButton = await page.$('button.cf-btn.cf-btn-danger[data-translate="dismiss_and_enter"]');
+    if (proceedButton) {
+      log(`[${'Playwright'.green}] Кнопка "Ignore & Proceed" найдена.`);
+      
+      // Нажатие на кнопку
+      await proceedButton.click();
+      
+      // Ожидание редиректа после нажатия
       try {
         await page.waitForNavigation({ timeout: 10000 });
-        log(`[${'Playwright'.green}] Навигация после клика прошла успешно.`);
+        log(`[${'Playwright'.green}] Навигация после нажатия кнопки прошла успешно.`);
       } catch (e) {
         log(`[${'Playwright'.yellow}] Редирект не произошел: ${e.message}, пробую снова...`);
       }
     } else {
-      log(`[${'Playwright'.red}] Элемент для клика не найден.`);
+      log(`[${'Playwright'.red}] Кнопка "Ignore & Proceed" не найдена.`);
     }
   } catch (e) {
     log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare2: ${e.message}`);
