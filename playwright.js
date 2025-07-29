@@ -6,9 +6,9 @@ require('events').EventEmitter.defaultMaxListeners = Infinity;
 const JSList = {
   js: [
     {
-      name: "CloudFlare (Secure JS)",
-      navigations: 2,
-      locate: '<h2 class="h2" id="challenge-running">'
+      name: "CloudFlare2",
+      navigations: 1,
+      locate: '<title>Suspected phishing site | Cloudflare</title>'
     },
     {
       name: "CloudFlare",
