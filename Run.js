@@ -1,4 +1,4 @@
-const { solverInstance } = require('./main');
+const { solverInstance } = require('./playwright.js');
 const fs = require('fs');
 const readline = require('readline');
 
