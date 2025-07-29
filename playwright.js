@@ -203,51 +203,63 @@ async function processProtection(page, label) {
   if (detected) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
-    if (detected.name === "CloudFlare") {
-      try {
-        let redirectHappened = false;
 
-        while (!redirectHappened) {
-          const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
-          if (!frame) {
-            await sleep(8800);
-            log(`[${'Playwright'.red}] Фрейм Turnstile не найден.`);
-            break;
-          }
 
-          const checkbox = await frame.$('input[type="checkbox"]');
-          if (!checkbox) {
-            log(`[${'Playwright'.red}] Чекбокс Turnstile не найден во фрейме.`);
-            break;
-          }
+if (detected.name === "CloudFlare") {
+  try {
+    let redirectHappened = false;
 
-          const box = await checkbox.boundingBox();
-          if (!box) {
-            log(`[${'Playwright'.red}] Не удалось получить координаты чекбокса Turnstile.`);
-            break;
-          }
+    while (!redirectHappened) {
+      // Проверяем наличие фрейма с CloudFlare 
+      const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
+      if (!frame) {
+        await sleep(8800);
+        log(`[${'Playwright'.red}] Фрейм CloudFlare не найден.`);
+        break;
+      }
 
+      // Ищем checkbox или кнопку для обхода
+      const checkbox = await frame.$('input[type="checkbox"]');
+      if (checkbox) {
+        log(`[${'Playwright'.green}] Найден checkbox для обхода CloudFlare.`);
+        const box = await checkbox.boundingBox();
+        if (box) {
+          // Симуляция клика по checkbox
           await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
           await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+        }
+      } else {
+        log(`[${'Playwright'.yellow}] Checkbox не найден, пробуем клик по кнопке.`);
+        const button = await frame.$('button');
+        if (button) {
+          await button.click();
+          log(`[${'Playwright'.green}] Кнопка нажата.`);
+        } else {
+          log(`[${'Playwright'.red}] Кнопка для обхода CloudFlare не найдена.`);
+          break;
+        }
+      }
 
-          try {
-            const response = await page.waitForNavigation({ timeout: 10000 });
-            if (response) {
-              log(`[${'Playwright'.green}] Навигация прошла успешно`);
-              redirectHappened = true;
-            } else {
-              log(`[${'Playwright'.yellow}] Редирект не произошел, пробую снова...`);
-            }
-          } catch (e) {
-            log(`[${'Playwright'.yellow}] Навигация не произошла: ${e.message}, пробую снова...`);
-          }
-
-          await sleep(3000);
+      // Ожидание редиректа после клика
+      try {
+        const response = await page.waitForNavigation({ timeout: 10000 });
+        if (response) {
+          log(`[${'Playwright'.green}] Успешный редирект после обхода.`);
+          redirectHappened = true;
+        } else {
+          log(`[${'Playwright'.yellow}] Редирект не произошел, пробуем снова...`);
         }
       } catch (e) {
-        log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
+        log(`[${'Playwright'.yellow}] Ошибка редиректа: ${e.message}, пробуем снова...`);
       }
+
+      await sleep(3000); // Даем время для обновления страницы
     }
+  } catch (e) {
+    log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare: ${e.message}`);
+  }
+}
+
 
 if (detected.name === "CloudFlare2") {
   try {
