@@ -308,3 +308,4 @@ if (["CloudFlare"].includes(detected.name)) {
 module.exports = {
   solverInstance
 };
+Проблемы кода
