@@ -234,6 +234,8 @@ if (detected.name === "CloudFlare") {
 
     // Проверяем результат выполнения
     if (managedChallengeResult === 'Challenge completed') {
+      const currentTitle = await page.title();
+      log(`[${'Playwright'.green}] Заголовок после редиректа: ${currentTitle}`);
       log(`[${'Playwright'.green}] Обход CloudFlare завершен успешно.`);
     } else {
       log(`[${'Playwright'.yellow}] Обход CloudFlare не требуется или не удалось.`);
