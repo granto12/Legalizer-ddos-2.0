@@ -3,13 +3,6 @@ const colors = require('colors');
 const { spawn } = require('child_process');
 require('events').EventEmitter.defaultMaxListeners = Infinity;
 
-const args = {
-  Target: "https://google.com/",
-  Time: "5000",
-  Method: "TLSv1",
-  Rate: "40",
-  Threads: "5"
-};
 
 const JSList = {
   js: [
