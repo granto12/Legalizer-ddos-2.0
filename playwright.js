@@ -249,6 +249,27 @@ async function processProtection(page, label) {
       }
     }
 
+if (detected.name === "CloudFlare2") {
+  try {
+    const clickableElement = await page.$('c[addEventListener="click"]');
+    if (clickableElement) {
+      log(`[${'Playwright'.green}] Элемент для клика найден.`);
+      await clickableElement.click();
+      try {
+        await page.waitForNavigation({ timeout: 10000 });
+        log(`[${'Playwright'.green}] Навигация после клика прошла успешно.`);
+      } catch (e) {
+        log(`[${'Playwright'.yellow}] Редирект не произошел: ${e.message}, пробую снова...`);
+      }
+    } else {
+      log(`[${'Playwright'.red}] Элемент для клика не найден.`);
+    }
+  } catch (e) {
+    log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare2: ${e.message}`);
+  }
+}
+
+
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
         await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
