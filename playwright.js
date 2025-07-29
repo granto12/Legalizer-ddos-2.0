@@ -161,25 +161,31 @@ const page = await context.newPage();
 
 
 await page.addInitScript(() => {
+  // Скрыть WebDriver
   Object.defineProperty(navigator, 'webdriver', { get: () => false });
 
+  // Эмулировать объект Chrome
   window.chrome = { runtime: {} };
 
+  // язык
   Object.defineProperty(navigator, 'languages', {
     get: () => ['ru-RU', 'ru']
-  }); 
+  });
 
+  // Эмулировать плагины
   Object.defineProperty(navigator, 'plugins', {
     get: () => [1, 2, 3]
   });
 
+  // WebGL fingerprint подделка
   const getParameter = WebGLRenderingContext.prototype.getParameter;
   WebGLRenderingContext.prototype.getParameter = function (parameter) {
-    if (parameter === 37445) return 'Intel Inc.';
-    if (parameter === 37446) return 'Intel Iris OpenGL Engine';
-    return getParameter(parameter);
+    if (parameter === 37445) return 'Intel Inc.'; // UNMASKED_VENDOR_WEBGL
+    if (parameter === 37446) return 'Intel Iris OpenGL Engine'; // UNMASKED_RENDERER_WEBGL
+    return getParameter.call(this, parameter);
   };
 
+  // Убрать блокировку на уведомления
   const originalQuery = window.navigator.permissions.query;
   window.navigator.permissions.query = (parameters) => (
     parameters.name === 'notifications'
