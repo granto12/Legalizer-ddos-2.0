@@ -4,7 +4,7 @@ const { spawn } = require('child_process');
 require('events').EventEmitter.defaultMaxListeners = Infinity;
 
 const args = {
-  Target: "https://google.cc/",
+  Target: "https://google.com/",
   Time: "5000",
   Method: "TLSv1",
   Rate: "40",
