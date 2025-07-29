@@ -3,7 +3,7 @@ const fs = require('fs');
 const readline = require('readline');
 
 const baseArgs = {
-  Target: "https://google.com/",
+  Target: "https://Legalizer.cc/",
   Time: "5000",
   Method: "TLSv1",
   Rate: "40",
