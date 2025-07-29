@@ -188,16 +188,12 @@ await page.addInitScript(() => {
   );
 });
 
-if (typeof args.Target === 'string' && args.Target.startsWith('http')) {
-  try {
-    await page.goto(args.Target, { waitUntil: 'domcontentloaded' });
+try {
+    await page.goto(Target, { waitUntil: 'domcontentloaded' });
   } catch (e) {
     await browser.close();
     throw e;
   }
-} else {
-  log(`[${'Playwright'.red}] Неверный или отсутствующий URL: ${args.Target}`);
-  await browser.close();
 }
 
 log(`(${`PlayWright`.cyan}) UA: ${uaConfig.userAgent.green}`);
