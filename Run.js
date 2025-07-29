@@ -2,6 +2,15 @@ const { solverInstance } = require('./playwright.js');
 const fs = require('fs');
 const readline = require('readline');
 
+const baseArgs = {
+  Target: "https://google.com/",
+  Time: "5000",
+  Method: "TLSv1",
+  Rate: "40",
+  Threads: "5"
+};
+
+
 (async () => {
   const fileStream = fs.createReadStream('./proxies.txt');
 
@@ -9,6 +18,7 @@ const readline = require('readline');
     input: fileStream,
     crlfDelay: Infinity
   });
+
 
   for await (const line of rl) {
     const proxy = line.trim();
@@ -19,7 +29,11 @@ const readline = require('readline');
     if (!isAlive) continue;
 
     try {
-      await solverInstance(proxy); // вот здесь передаётся прокси как строка
+      
+      const fullArgs = { ...baseArgs, Proxy: proxy };
+      await solverInstance(fullArgs);
+      
+      //await solverInstance(proxy); // вот здесь передаётся прокси как строка
     } catch (e) {
       console.error(`[ERROR] ${proxy}: ${e.message}`);
     }
