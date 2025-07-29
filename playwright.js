@@ -6,9 +6,9 @@ require('events').EventEmitter.defaultMaxListeners = Infinity;
 const JSList = {
   js: [
     {
-      name: "CloudFlare2",
-      navigations: 1,
-      locate: '<title>Suspected phishing site | Cloudflare</title>'
+      name: "CloudFlare (Secure JS)",
+      navigations: 2,
+      locate: '<h2 class="h2" id="challenge-running">'
     },
     {
       name: "CloudFlare",
@@ -192,65 +192,62 @@ async function solverInstance(args) {
 
 async function processProtection(page, label) {
   const html = await page.content();
-  const title = await page.title(); 
-  //)₽!?(????
- 
-if (detected.name === "CloudFlare2") {
-  try {
-    // Поиск кнопки с указанным классом и атрибутами
-    const proceedButton = await page.$('button.cf-btn.cf-btn-danger[data-translate="dismiss_and_enter"]');
-    if (proceedButton) {
-      log(`[${'Playwright'.green}] Кнопка "Ignore & Proceed" найдена.`);
-      
-      // Нажатие на кнопку
-      await proceedButton.click();
-      
-      // Ожидание редиректа после нажатия
-      try {
-        await page.waitForNavigation({ timeout: 10000 });
-        log(`[${'Playwright'.green}] Навигация после нажатия кнопки прошла успешно.`);
-        
-        // После редиректа запускаем проверку CloudFlare и JD Detection
-        let triggerDetected = true;
-        while (triggerDetected) {
-          const htmlAfterRedirect = await page.content();
-          const titleAfterRedirect = await page.title();
+  const title = await page.title();
 
-          // Повторная проверка через JSDetection
-          const detectedAfterRedirect = JSDetection(htmlAfterRedirect);
-          if (detectedAfterRedirect) {
-            log(`[${'Playwright'.yellow}] Обнаружен триггер после редиректа: ${detectedAfterRedirect.name}`);
-            
-            // Выполняем повторную обработку защиты
-            if (["CloudFlare", "CloudFlare2"].includes(detectedAfterRedirect.name)) {
-              await processProtection(page, 'Повторная обработка CloudFlare');
-            } else if (["DDoS-Guard", "DDoS-Guard-en"].includes(detectedAfterRedirect.name)) {
-              for (let i = 0; i < 5; i++) {
-                await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
-              }
-              await page.mouse.down();
-              await page.mouse.move(100, 100);
-              await page.mouse.up();
-              await sleep(20630);
-              await page.reload({ waitUntil: 'domcontentloaded' });
-            }
-          } else {
-            log(`[${'Playwright'.green}] Триггер не обнаружен, продолжаем.`);
-            triggerDetected = false; // Выходим из цикла, если триггер больше не обнаружен
+  if (title === "Access denied") {
+    log(`(${label.red}) Доступ к странице запрещён.`);
+    return;
+  }
+
+  const detected = JSDetection(html);
+  if (detected) {
+    log(`(${label.green}) защита: ${detected.name.yellow}`);
+
+    if (detected.name === "CloudFlare") {
+      try {
+        let redirectHappened = false;
+
+        while (!redirectHappened) {
+          const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
+          if (!frame) {
+            await sleep(8800);
+            log(`[${'Playwright'.red}] Фрейм Turnstile не найден.`);
+            break;
           }
+
+          const checkbox = await frame.$('input[type="checkbox"]');
+          if (!checkbox) {
+            log(`[${'Playwright'.red}] Чекбокс Turnstile не найден во фрейме.`);
+            break;
+          }
+
+          const box = await checkbox.boundingBox();
+          if (!box) {
+            log(`[${'Playwright'.red}] Не удалось получить координаты чекбокса Turnstile.`);
+            break;
+          }
+
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
+          await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+          try {
+            const response = await page.waitForNavigation({ timeout: 10000 });
+            if (response) {
+              log(`[${'Playwright'.green}] Навигация прошла успешно`);
+              redirectHappened = true;
+            } else {
+              log(`[${'Playwright'.yellow}] Редирект не произошел, пробую снова...`);
+            }
+          } catch (e) {
+            log(`[${'Playwright'.yellow}] Навигация не произошла: ${e.message}, пробую снова...`);
+          }
+
+          await sleep(3000);
         }
       } catch (e) {
-        log(`[${'Playwright'.yellow}] Редирект не произошел: ${e.message}, пробую снова...`);
+        log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
       }
-    } else {
-      log(`[${'Playwright'.red}] Кнопка "Ignore & Proceed" не найдена.`);
     }
-  } catch (e) {
-    log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare2: ${e.message}`);
-  }
-}
-
-
 
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
