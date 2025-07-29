@@ -3,11 +3,11 @@ const fs = require('fs');
 const readline = require('readline');
 
 const baseArgs = {
-  Target: "https://Legalizer.cc/",
+  Target: "https://www.aeroflot.ru/",
   Time: "5000",
   Method: "TLSv1",
   Rate: "40",
-  Threads: "5"
+  Threads: "20"
 };
 
 
