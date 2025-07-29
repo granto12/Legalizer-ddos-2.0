@@ -167,7 +167,7 @@ await page.addInitScript(() => {
 
   Object.defineProperty(navigator, 'languages', {
     get: () => ['ru-RU', 'ru']
-  }); из
+  }); 
 
   Object.defineProperty(navigator, 'plugins', {
     get: () => [1, 2, 3]
