@@ -192,7 +192,65 @@ async function solverInstance(args) {
 
 async function processProtection(page, label) {
   const html = await page.content();
-  const title = await page.title();
+  const title = await page.title(); 
+  //)₽!?(????
+  const cloudscraper = require('cloudscraper');
+  const TurnstileBypass = require('turnstile-bypass');
+  
+  async function processProtection(page, label) {
+    const html = await page.content();
+    const title = await page.title();
+  
+    if (title === "Access denied") {
+      log(`(${label.red}) Доступ к странице запрещён.`);
+      return;
+    }
+  
+    const detected = JSDetection(html);
+    if (detected) {
+      log(`(${label.green}) защита: ${detected.name.yellow}`);
+  
+      if (detected.name === "CloudFlare") {
+        try {
+          log(`[${'Playwright'.green}] Используем cloudscraper для обхода CloudFlare Turnstile.`);
+          const response = await cloudscraper.get(page.url());
+          log(`[${'Playwright'.green}] Статус: ${response.statusCode}`);
+  
+          if (response.statusCode === 200) {
+            log(`[${'Playwright'.green}] Успешно обошли CloudFlare Turnstile.`);
+            return;
+          }
+        } catch (e) {
+          log(`[${'Playwright'.red}] Ошибка в cloudscraper: ${e.message}`);
+        }
+      }
+  
+      if (detected.name === "CloudFlare2") {
+        try {
+          log(`[${'Playwright'.green}] Используем turnstile-bypass для обхода CloudFlare Turnstile.`);
+          const cf = new TurnstileBypass();
+  
+          const bypass = await cf.solve(page.url());
+          if (bypass && bypass.cookies) {
+            log(`[${'Playwright'.green}] Успешно получили cookies.`);
+            await page.context().addCookies(bypass.cookies);
+            await page.reload({ waitUntil: 'domcontentloaded' });
+            return;
+          } else {
+            log(`[${'Playwright'.yellow}] Не удалось обойти Turnstile.`);
+          }
+        } catch (e) {
+          log(`[${'Playwright'.red}] Ошибка в turnstile-bypass: ${e.message}`);
+        }
+      }
+  
+      // Если защита не обошлась
+      log(`[${'Playwright'.yellow}] Обход не удался.`);
+    } else {
+      log(`(${label}) Девки нас не ждут заходим`);
+    }
+  }// !!!!!'nnn!!!!!!!!!!!!!!!!
+
 
   if (title === "Access denied") {
     log(`(${label.red}) Доступ к странице запрещён.`);
