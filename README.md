@@ -1,4 +1,8 @@
 # Legalizer-ddos-2.0
+![IMG_0774](https://github.com/user-attachments/assets/9e64ea48-41a7-4e4b-8f47-f9c8a9146ce0)
+![IMG_0777](https://github.com/user-attachments/assets/213383a3-b255-418d-b71e-047b567e6ecc)
+
+
 скрипт полностью обходит ddg на Legalizer.cc
 написал 2 ночи
 
