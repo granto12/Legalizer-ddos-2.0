@@ -1,6 +1,10 @@
 # Legalizer-ddos-2.0
 скрипт полностью обходит ddg на Legalizer.cc
 написал 2 ночи
+
+
+https://check-host.net/check-http?host=Legalizer.cc&csrf_token=e56b6e61e43558cd6a6a60897b01f967e398d563
+
 Когда запускаете конк не больше 50 рейта. 
 клипаните свой флуддер и запускайте. 
 
