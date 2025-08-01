@@ -193,23 +193,39 @@ async function processProtection(page, label) {
 
  
 
-    if (["ddos"].includes(detected.name)) {
-      for (let i = 0; i < 5; i++) {
-        await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
-      }
-      await page.mouse.down();
-      await page.mouse.move(100, 100);
-      await page.mouse.up();
-      await page.waitForNavigation();
-      log(`(${`Playwright`.green}) title web after navigation: ${title}`);
+ if (["ddos"].includes(detected.name)) {
+  let title = await page.title();
+
+  while (title !== "AMG") {
+    log(`(${`Playwright`.yellow}) Обнаружен DDoS-Guard. Запуск обхода...`);
+
+    // Эмуляция активности
+    for (let i = 0; i < 5; i++) {
+      await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
+    }
+    await page.mouse.down();
+    await page.mouse.move(100, 100);
+    await page.mouse.up();
+
+    // Ждём редиректа
+    try {
+      await page.waitForNavigation({ timeout: 15000 });
+    } catch (_) {
+      log(`(${`Playwright`.gray}) Редирект не обнаружен, продолжаем...`);
     }
 
-    for (let i = 0; i < detected.navigations; i++) {
-      await page.waitForNavigation();
-      log(`(${`Навигация`.green}) [${i + 1}/${detected.navigations}]`);
+    title = await page.title();
+    log(`(${`Playwright`.cyan}) Заголовок после действий: ${title}`);
+
+    if (title === "AMG") {
+      log(`(${`Playwright`.green}) AMG обнаружен — защита пройдена.`);
+      break;
     }
-  } else {
-    log(`(${label}) No security `);
+
+    log(`(${`Playwright`.red}) Всё ещё не AMG. Ждём 3 минуты и повторяем...`);
+    await sleep(180000); // 3 минуты
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    title = await page.title();
   }
 }
 
