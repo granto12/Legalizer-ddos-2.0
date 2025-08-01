@@ -9,8 +9,12 @@ const JSList = {
   ]
 };
 
-const ignoreNames = [...];
-const ignoreCodes = [...];
+const ignoreNames = [
+  "RequestError", "StatusCodeError", "CaptchaError",
+  "CloudflareError", "ParseError", "ParserError",
+  "TimeoutError", "DeprecationWarning"
+];
+
 
 process.on("uncaughtException", handleError);
 process.on("unhandledRejection", handleError);
