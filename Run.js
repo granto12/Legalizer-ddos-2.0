@@ -7,18 +7,12 @@ const baseArgs = {
   Time: "400",
   Method: "TLSv1",
   Rate: "80",
-  Threads: "10"
+  Threads: 10
 };
-
 
 (async () => {
   const fileStream = fs.createReadStream('./proxies.txt');
-
-  const rl = readline.createInterface({
-    input: fileStream,
-    crlfDelay: Infinity
-  });
-
+  const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
 
   for await (const line of rl) {
     const proxy = line.trim();
@@ -26,32 +20,31 @@ const baseArgs = {
 
     const [ip, port] = proxy.split(':');
     const isAlive = await checkProxy(ip, port);
-    if (!isAlive) continue;
+    if (!isAlive) {
+      console.log(`(ProxyCheck.red) ${proxy} не рабочий`);
+      continue;
+    }
 
+    const args = { ...baseArgs, Proxy: proxy };
+    console.log(`(Runner.green) Запуск solverInstance для прокси: ${proxy}`);
     try {
-      
-      const fullArgs = { ...baseArgs, Proxy: proxy };
-      await solverInstance(fullArgs);
-      
-      //await solverInstance(proxy); // вот здесь передаётся прокси как строка
+      const cookies = await solverInstance(args);
+      console.log(`(Runner.green) Успех, куки: ${cookies}`);
+      break; // или не ломай и продолжай по списку
     } catch (e) {
-      console.error(`[ERROR] ${proxy}: ${e.message}`);
+      console.error(`(Runner.red) Ошибка для ${proxy}: ${e.message}`);
     }
   }
-})();
+})().catch(err => console.error(err));
 
-// простая проверка доступности прокси
 async function checkProxy(ip, port) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const net = require('net');
-    const socket = new net.Socket();
-    socket.setTimeout(2000);
-    socket.on('connect', () => {
-      socket.destroy();
-      resolve(true);
-    });
-    socket.on('error', () => resolve(false));
-    socket.on('timeout', () => resolve(false));
-    socket.connect(port, ip);
+    const sock = new net.Socket();
+    sock.setTimeout(3000);
+    sock.on('connect', () => { sock.destroy(); resolve(true); });
+    sock.on('error', () => resolve(false));
+    sock.on('timeout', () => resolve(false));
+    sock.connect(port, ip);
   });
 }
