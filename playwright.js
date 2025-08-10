@@ -228,7 +228,9 @@ async function processProtection(page, label) {
   if (detected) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
-    if (detected.name === "CloudFlare") {
+ const fs = require('fs');
+
+if (detected.name === "CloudFlare") {
   try {
     let attempt = 1;
     let screenshotDone = false;
@@ -245,27 +247,20 @@ async function processProtection(page, label) {
         screenshotDone = true;
       }
 
-      // 1. Ждём длинную надпись
-      const longVerifyElement = page.locator('text=Verify you are human by completing the action below').first();
-      try {
-        await longVerifyElement.waitFor({ timeout: 30000 });
-        log(`[${'Playwright'.green}] Найдена надпись "Verify you are human by completing the action below".`);
-      } catch {
-        log(`[${'Playwright'.red}] Длинная надпись не найдена. Прерываю.`);
-        await browser.close();
-        break;
-      }
-
-      // 2. Ждём короткую надпись
       const verifyElement = page.locator('text=Verify you are human').first();
       try {
         await verifyElement.waitFor({ timeout: 30000 });
-        log(`[${'Playwright'.green}] Найдена надпись "Verify you are human".`);
       } catch {
-        log(`[${'Playwright'.red}] Короткая надпись не найдена. Прерываю.`);
-        await browser.close();
+        const title = await page.title();
+        log(`[${'Playwright'.red}] Надпись не найдена. Title: ${title}`);
+        if (attempt >= 2) {
+          log(`[${'Playwright'.red}] После второй попытки надпись не найдена. Закрываю браузер.`);
+          await browser.close();
+        }
         break;
       }
+
+      log(`[${'Playwright'.green}] Найдена надпись "Verify you are human".`);
 
       const box = await verifyElement.boundingBox();
       if (!box) {
@@ -343,7 +338,7 @@ async function processProtection(page, label) {
   } catch (e) {
     log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare: ${e.message}`);
   }
-}    
+}
       
       
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
