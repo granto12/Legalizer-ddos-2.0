@@ -249,7 +249,7 @@ async function processProtection(page, label) {
         log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
       }
     }
-    }
+    
 
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
