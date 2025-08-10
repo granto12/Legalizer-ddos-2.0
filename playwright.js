@@ -208,6 +208,9 @@ async function processProtection(page, label) {
 
 
 
+const fs = require('fs');
+const Jimp = require('jimp');
+
 if (detected.name === "CloudFlare") {
   try {
     let attempt = 1;
@@ -223,6 +226,10 @@ if (detected.name === "CloudFlare") {
       } catch {
         const title = await page.title();
         log(`[${'Playwright'.red}] Надпись не найдена. Title: ${title}`);
+        if (attempt >= 2) {
+          log(`[${'Playwright'.red}] После второй попытки надпись не найдена. Закрываю браузер.`);
+          await browser.close();
+        }
         break;
       }
 
@@ -232,18 +239,23 @@ if (detected.name === "CloudFlare") {
       const box = await verifyElement.boundingBox();
       if (!box) {
         log(`[${'Playwright'.red}] Не удалось получить координаты надписи.`);
+        if (attempt >= 2) {
+          log(`[${'Playwright'.red}] После второй попытки координаты не найдены. Закрываю браузер.`);
+          await browser.close();
+        }
         break;
       }
 
       const clickX = Math.floor(box.x - 10);
       const clickY = Math.floor(box.y + box.height / 2);
 
-      // Скриншот только один раз на второй попытке
+      // Скриншот с точкой только один раз на второй попытке
       if (attempt === 2 && !screenshotDone) {
         const tempShot = `temp_screenshot_${Date.now()}.png`;
         const finalShot = `verify_attempt_${Date.now()}.png`;
 
         await page.screenshot({ path: tempShot, fullPage: true });
+        log(`[${'Playwright'.blue}] Делаю скриншот с точкой: ${finalShot}`);
 
         const img = await Jimp.read(tempShot);
         const red = Jimp.rgbaToInt(255, 0, 0, 255);
@@ -277,17 +289,22 @@ if (detected.name === "CloudFlare") {
         redirectHappened = false;
         const title = await page.title();
         log(`[${'Playwright'.yellow}] Редирект не произошёл. Title: ${title}`);
+        if (attempt >= 2) {
+          log(`[${'Playwright'.red}] После второй попытки редиректа нет. Закрываю браузер.`);
+          await browser.close();
+        }
       }
 
       // Получаем title
       const title = await page.title();
       log(`[${'Playwright'.green}] Title страницы: ${title}`);
 
-      // Если тайтл RC Forum Legalizer → скрин
+      // Скрин при RC Forum Legalizer
       if (title.trim() === 'RC Forum Legalizer') {
         const rcShot = `rc_forum_${Date.now()}.png`;
+        log(`[${'Playwright'.blue}] Делаю скриншот RC Forum Legalizer: ${rcShot}`);
         await page.screenshot({ path: rcShot, fullPage: true });
-        log(`[${'Playwright'.green}] RC Forum Legalizer — скриншот сохранён: ${rcShot}`);
+        log(`[${'Playwright'.green}] Скриншот RC Forum Legalizer сохранён: ${rcShot}`);
       }
 
       // Если Just a moment..., повторяем
