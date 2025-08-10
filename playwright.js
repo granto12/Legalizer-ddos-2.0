@@ -206,32 +206,61 @@ async function processProtection(page, label) {
 
 if (detected.name === "CloudFlare") {
   try {
-    // Ждём 30 секунд
-    await page.waitForTimeout(30000);
+    let attempt = 1;
 
-    // Ищем надпись "Verify you are human"
-    const verifyElement = page.locator('text=Verify you are human').first();
-    const isVisible = await verifyElement.isVisible();
+    while (true) {
+      log(`[${'Playwright'.yellow}] Попытка #${attempt}...`);
 
-    if (!isVisible) {
-      log(`[${'Playwright'.red}] Надпись "Verify you are human" не найдена.`);
-    } else {
-      log(`[${'Playwright'.green}] Найдена надпись "Verify you are human". Делаю клик...`);
-      
-      // Кликаем
-      await verifyElement.click({ timeout: 5000 });
+      // Ждём появления надписи (не более 30 секунд)
+      const verifyElement = page.locator('text=Verify you are human').first();
+      try {
+        await verifyElement.waitFor({ timeout: 30000 });
+      } catch {
+        log(`[${'Playwright'.red}] Надпись "Verify you are human" не найдена.`);
+        break;
+      }
 
-      // Ждём 5 секунд перед получением title
+      log(`[${'Playwright'.green}] Найдена надпись "Verify you are human".`);
+
+      // Получаем координаты элемента
+      const box = await verifyElement.boundingBox();
+      if (!box) {
+        log(`[${'Playwright'.red}] Не удалось получить координаты надписи.`);
+        break;
+      }
+
+      // Считаем координаты: 20px левее центра по X
+      const clickX = box.x + box.width / 2 - 20;
+      const clickY = box.y + box.height / 2;
+
+      log(`[${'Playwright'.green}] Клик по координатам X=${clickX}, Y=${clickY}`);
+      await page.mouse.move(clickX, clickY, { steps: 15 });
+      await page.mouse.click(clickX, clickY);
+
+      // Ждём 5 секунд
       await page.waitForTimeout(5000);
 
-      // Получаем и выводим title
+      // Получаем title
       const title = await page.title();
       log(`[${'Playwright'.green}] Title страницы: ${title}`);
+
+      // Если Just a moment..., повторяем заново
+      if (title.trim() === 'Just a moment...') {
+        log(`[${'Playwright'.yellow}] Страница всё ещё "Just a moment...", повторяю процедуру...`);
+        attempt++;
+        continue;
+      }
+    
+      // Если title другой — значит проверка пройдена
+      log(`[${'Playwright'.green}] Проверка пройдена.`);
+      break;
     }
   } catch (e) {
-    log(`[${'Playwright'.red}] Ошибка при обработке Verify you are human: ${e.message}`);
+    log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare: ${e.message}`);
   }
 }
+
+
 
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
