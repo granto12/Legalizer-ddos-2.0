@@ -211,44 +211,41 @@ if (detected.name === "CloudFlare") {
     log(`[${'Playwright'.blue}] Ожидание 20 секунд перед началом...`);
     await page.waitForTimeout(20000);
 
-    const verifyElements = page.locator('text=Verify you are human');
-    const count = await verifyElements.count();
+    // Ищем элемент Verify you are human
+    const verifyElement = page.locator('text=Verify you are human').first();
+    try {
+      await verifyElement.waitFor({ timeout: 30000 });
+      const box = await verifyElement.boundingBox();
 
-    if (count === 0) {
-      log(`[${'Playwright'.red}] Элементы "Verify you are human" не найдены.`);
-    } else {
-      // Первый найденный элемент
-      const firstBox = await verifyElements.nth(0).boundingBox();
-      if (firstBox) {
-        log(`[${'Playwright'.green}] Первый элемент: X=${firstBox.x.toFixed(2)}, Y=${firstBox.y.toFixed(2)}, W=${firstBox.width.toFixed(2)}, H=${firstBox.height.toFixed(2)}`);
+      if (box) {
+        log(`[${'Playwright'.green}] Найден элемент "Verify you are human".`);
+        log(`[${'Playwright'.green}] Координаты: X=${box.x.toFixed(2)}, Y=${box.y.toFixed(2)}, Width=${box.width.toFixed(2)}, Height=${box.height.toFixed(2)}`);
       } else {
-        log(`[${'Playwright'.red}] Не удалось получить boundingBox первого элемента.`);
+        log(`[${'Playwright'.red}] Не удалось получить boundingBox элемента.`);
       }
-
-      // Второй найденный элемент (если есть)
-      if (count > 1) {
-        const secondBox = await verifyElements.nth(1).boundingBox();
-        if (secondBox) {
-          log(`[${'Playwright'.green}] Второй элемент: X=${secondBox.x.toFixed(2)}, Y=${secondBox.y.toFixed(2)}, W=${secondBox.width.toFixed(2)}, H=${secondBox.height.toFixed(2)}`);
-        } else {
-          log(`[${'Playwright'.red}] Не удалось получить boundingBox второго элемента.`);
-        }
-      } else {
-        log(`[${'Playwright'.yellow}] Второго элемента "Verify you are human" на странице нет.`);
-      }
+    } catch {
+      log(`[${'Playwright'.red}] Элемент "Verify you are human" не найден.`);
     }
 
-    // Логируем тайтл и закрываем браузер
+    // Клик по заданным координатам
+    const clickX = 100;
+    const clickY = 400;
+    await page.mouse.move(clickX, clickY);
+    await page.mouse.click(clickX, clickY);
+    log(`[${'Playwright'.green}] Клик по координатам X=${clickX}, Y=${clickY}`);
+
+    // Ждём 10 секунд
+    await page.waitForTimeout(10000);
+
+    // Логируем тайтл
     const title = await page.title();
     log(`[${'Playwright'.blue}] Текущий тайтл: ${title}`);
-    await page.context().browser().close();
 
+    // Браузер не закрываем
   } catch (e) {
     log(`[${'Playwright'.red}] Ошибка: ${e.message}`);
-    await page.context().browser().close();
   }
 }
-
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
         await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
