@@ -13,7 +13,7 @@ const JSList = {
     {
       name: "CloudFlare",
       navigations: 1,
-      locate: '<title>Один момент...</title>'
+      locate: '<title>Just a moment.../title>'
     },
     {
       name: "DDoS-Guard",
@@ -329,7 +329,7 @@ if (detected.name === "CloudFlare") {
       }
 
       if (title.trim() === 'Just a moment...') {
-        log(`[${'Playwright'.yellow}] Just a moment..., повторяю процедуру...`);
+        log(`[${'Playwright'.yellow}] u, повторяю процедуру...`);
         attempt++;
         continue;
       }
