@@ -229,51 +229,123 @@ async function processProtection(page, label) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
     if (detected.name === "CloudFlare") {
-      try {
-        let redirectHappened = false;
+  try {
+    let attempt = 1;
+    let screenshotDone = false;
 
-        while (!redirectHappened) {
-          const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
-          if (!frame) {
-            await sleep(8800);
-            log(`[${'Playwright'.red}] Фрейм Turnstile не найден.`);
-            break;
-          }
+    while (true) {
+      log(`[${'Playwright'.yellow}] Попытка #${attempt}...`);
 
-          const checkbox = await frame.$('input[type="checkbox"]');
-          if (!checkbox) {
-            log(`[${'Playwright'.red}] Чекбокс Turnstile не найден во фрейме.`);
-            break;
-          }
-
-          const box = await checkbox.boundingBox();
-          if (!box) {
-            log(`[${'Playwright'.red}] Не удалось получить координаты чекбокса Turnstile.`);
-            break;
-          }
-
-          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
-          await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-
-          try {
-            const response = await page.waitForNavigation({ timeout: 10000 });
-            if (response) {
-              log(`[${'Playwright'.green}] Навигация прошла успешно`);
-              redirectHappened = true;
-            } else {
-              log(`[${'Playwright'.yellow}] Редирект не произошел, пробую снова...`);
-            }
-          } catch (e) {
-            log(`[${'Playwright'.yellow}] Навигация не произошла: ${e.message}, пробую снова...`);
-          }
-
-          await sleep(3000);
-        }
-      } catch (e) {
-        log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
+      // Скрин после второй попытки
+      if (attempt === 2 && !screenshotDone) {
+        const finalShot = `verify_attempt_${Date.now()}.png`;
+        log(`[${'Playwright'.blue}] Делаю скриншот после второй попытки: ${finalShot}`);
+        await page.screenshot({ path: finalShot, fullPage: true });
+        log(`[${'Playwright'.green}] Скриншот сохранён: ${finalShot}`);
+        screenshotDone = true;
       }
-    }
 
+      // 1. Ждём длинную надпись
+      const longVerifyElement = page.locator('text=Verify you are human by completing the action below').first();
+      try {
+        await longVerifyElement.waitFor({ timeout: 30000 });
+        log(`[${'Playwright'.green}] Найдена надпись "Verify you are human by completing the action below".`);
+      } catch {
+        log(`[${'Playwright'.red}] Длинная надпись не найдена. Прерываю.`);
+        await browser.close();
+        break;
+      }
+
+      // 2. Ждём короткую надпись
+      const verifyElement = page.locator('text=Verify you are human').first();
+      try {
+        await verifyElement.waitFor({ timeout: 30000 });
+        log(`[${'Playwright'.green}] Найдена надпись "Verify you are human".`);
+      } catch {
+        log(`[${'Playwright'.red}] Короткая надпись не найдена. Прерываю.`);
+        await browser.close();
+        break;
+      }
+
+      const box = await verifyElement.boundingBox();
+      if (!box) {
+        log(`[${'Playwright'.red}] Не удалось получить координаты надписи.`);
+        if (attempt >= 2) {
+          log(`[${'Playwright'.red}] После второй попытки координаты не найдены. Закрываю браузер.`);
+          await browser.close();
+        }
+        break;
+      }
+
+      const clickX = box.x - 2.5;
+      const clickY = box.y + box.height / 2 + 1;
+
+      // 1-й клик
+      await page.mouse.move(clickX, clickY, { steps: 20 });
+      await page.mouse.click(clickX, clickY);
+      log(`[${'Playwright'.green}] Первый клик X=${clickX}, Y=${clickY}`);
+      await page.waitForTimeout(800);
+
+      // 2-й клик со смещением
+      const offsetX = Math.floor(Math.random() * 21) + 10;
+      const offsetY = Math.floor(Math.random() * 11) - 5;
+      const secondX = clickX + offsetX;
+      const secondY = clickY + offsetY;
+      await page.mouse.move(secondX, secondY, { steps: 25 });
+      await page.mouse.click(secondX, secondY);
+      log(`[${'Playwright'.green}] Второй клик X=${secondX}, Y=${secondY}`);
+      await page.waitForTimeout(800);
+
+      // 3-й клик (возврат)
+      await page.mouse.move(clickX, clickY, { steps: 20 });
+      await page.mouse.click(clickX, clickY);
+      log(`[${'Playwright'.green}] Третий клик X=${clickX}, Y=${clickY}`);
+
+      // 4-й клик по фиксированным координатам
+      const fixedX = 145.5;
+      const fixedY = 225.5;
+      await page.mouse.move(fixedX, fixedY, { steps: 20 });
+      await page.mouse.click(fixedX, fixedY);
+      log(`[${'Playwright'.green}] Четвёртый клик X=${fixedX}, Y=${fixedY}`);
+
+      // Ждём редирект
+      let redirectHappened = true;
+      try {
+        await page.waitForNavigation({ timeout: 20000 });
+        log(`[${'Playwright'.green}] Редирект произошёл.`);
+      } catch {
+        redirectHappened = false;
+        const title = await page.title();
+        log(`[${'Playwright'.yellow}] Редирект не произошёл. Title: ${title}`);
+        if (attempt >= 2) {
+          log(`[${'Playwright'.red}] После второй попытки редиректа нет. Закрываю браузер.`);
+          await browser.close();
+        }
+      }
+
+      const title = await page.title();
+      log(`[${'Playwright'.green}] Title страницы: ${title}`);
+
+      if (title.trim() === 'RC Forum Legalizer') {
+        const rcShot = `rc_forum_${Date.now()}.png`;
+        log(`[${'Playwright'.blue}] Делаю скриншот RC Forum Legalizer: ${rcShot}`);
+        await page.screenshot({ path: rcShot, fullPage: true });
+        log(`[${'Playwright'.green}] Скриншот RC Forum Legalizer сохранён: ${rcShot}`);
+      }
+
+      if (title.trim() === 'Just a moment...') {
+        log(`[${'Playwright'.yellow}] Just a moment..., повторяю процедуру...`);
+        attempt++;
+        continue;
+      }
+      break;
+    }
+  } catch (e) {
+    log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare: ${e.message}`);
+  }
+}    
+      
+      
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
         await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
