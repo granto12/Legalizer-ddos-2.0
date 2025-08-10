@@ -208,10 +208,7 @@ async function processProtection(page, label) {
 
 
 
-const fs = require('fs');
-
-
-if (detected.name === "CloudFlare") {
+  if (detected.name === "CloudFlare") {
   try {
     let attempt = 1;
     let screenshotDone = false;
@@ -311,28 +308,6 @@ if (detected.name === "CloudFlare") {
     log(`[${'Playwright'.red}] Ошибка: ${e.message}`);
   }
 }
-
-      const title = await page.title();
-      log(`[${'Playwright'.green}] Title страницы: ${title}`);
-
-      if (title.trim() === 'RC Forum Legalizer') {
-        const rcShot = `rc_forum_${Date.now()}.png`;
-        log(`[${'Playwright'.blue}] Делаю скриншот RC Forum Legalizer: ${rcShot}`);
-        await page.screenshot({ path: rcShot, fullPage: true });
-        log(`[${'Playwright'.green}] Скриншот RC Forum Legalizer сохранён: ${rcShot}`);
-      }
-
-      if (title.trim() === 'Just a moment...') {
-        log(`[${'Playwright'.yellow}] Just a moment..., повторяю процедуру...`);
-        attempt++;
-        continue;
-      }
-      break;
-    }
-  } catch (e) {
-    log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare: ${e.message}`);
-  }
-
 
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
