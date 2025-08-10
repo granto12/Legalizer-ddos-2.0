@@ -211,58 +211,31 @@ if (detected.name === "CloudFlare") {
     log(`[${'Playwright'.blue}] Ожидание 20 секунд перед началом...`);
     await page.waitForTimeout(20000);
 
-    // Ищем элемент Verify you are human
-    const verifyElement = page.locator('text=Verify you are human').first();
-    try {
-      await verifyElement.waitFor({ timeout: 30000 });
-      const box = await verifyElement.boundingBox();
+    // Ищем iframe с reCAPTCHA
+    const frames = page.frames();
+    const captchaFrame = frames.find(f => f.url().includes('google.com/recaptcha/api2/anchor'));
+    if (captchaFrame) {
+      log(`[${'Playwright'.green}] Найден iframe reCAPTCHA`);
 
-      if (box) {
-        log(`[${'Playwright'.green}] Найден элемент "Verify you are human".`);
-        log(`[${'Playwright'.green}] Координаты: X=${box.x.toFixed(2)}, Y=${box.y.toFixed(2)}, Width=${box.width.toFixed(2)}, Height=${box.height.toFixed(2)}`);
-      } else {
-        log(`[${'Playwright'.red}] Не удалось получить boundingBox элемента.`);
-      }
-    } catch {
-      log(`[${'Playwright'.red}] Элемент "Verify you are human" не найден.`);
+      // Ждём появления чекбокса
+      const checkbox = captchaFrame.locator('.rc-anchor-content');
+      await checkbox.waitFor({ timeout: 15000 });
+      log(`[${'Playwright'.green}] Чекбокс найден, кликаем`);
+      await checkbox.click();
+
+      // Дальнейшая логика — ожидание прохождения капчи
+      await page.waitForTimeout(5000);
+    } else {
+      log(`[${'Playwright'.yellow}] iframe reCAPTCHA не найден, продолжаем обычный клик`);
+      await page.mouse.click(100, 400);
     }
 
-    // Клик по заданным координатам
-    const clickX = 100;
-    const clickY = 400;
-    await page.mouse.move(clickX, clickY);
-    await page.mouse.click(clickX, clickY);
-    log(`[${'Playwright'.green}] Клик по координатам X=${clickX}, Y=${clickY}`);
-
-    // Ждём 10 секунд
     await page.waitForTimeout(10000);
-
-    // Логируем тайтл
     const title = await page.title();
     log(`[${'Playwright'.blue}] Текущий тайтл: ${title}`);
 
-    // Браузер не закрываем
   } catch (e) {
     log(`[${'Playwright'.red}] Ошибка: ${e.message}`);
-  }
-}
-    if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
-      for (let i = 0; i < 5; i++) {
-        await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
-      }
-      await page.mouse.down();
-      await page.mouse.move(100, 100);
-      await page.mouse.up();
-      await sleep(20630);
-      await page.reload({ waitUntil: 'domcontentloaded' });
-    }
-
-    for (let i = 0; i < detected.navigations; i++) {
-      await page.waitForNavigation();
-      log(`(${`Навигация`.green}) [${i + 1}/${detected.navigations}]`);
-    }
-  } else {
-    log(`(${label}) Девки нас не ждут заходим`);
   }
 }
 
