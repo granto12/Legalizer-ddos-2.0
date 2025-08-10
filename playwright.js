@@ -2,9 +2,6 @@ const playwright = require('playwright');
 const colors = require('colors');
 const { spawn } = require('child_process');
 require('events').EventEmitter.defaultMaxListeners = Infinity;
-const fs = require('fs');
-
-
 
 const JSList = {
   js: [
@@ -206,41 +203,51 @@ async function processProtection(page, label) {
   if (detected) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
+    if (detected.name === "CloudFlare") {
+      try {
+        let redirectHappened = false;
 
+        while (!redirectHappened) {
+          const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
+          if (!frame) {
+            await sleep(8800);
+            log(`[${'Playwright'.red}] Фрейм Turnstile не найден.`);
+            break;
+          }
 
-if (detected.name === "CloudFlare") {
-  try {
-    log(`[${'Playwright'.blue}] Ожидание 20 секунд перед началом...`);
-    await page.waitForTimeout(20000);
+          const checkbox = await frame.$('input[type="checkbox"]');
+          if (!checkbox) {
+            log(`[${'Playwright'.red}] Чекбокс Turnstile не найден во фрейме.`);
+            break;
+          }
 
-    // Ищем iframe с reCAPTCHA
-    const frames = page.frames();
-    const captchaFrame = frames.find(f => f.url().includes('google.com/recaptcha/api2/anchor'));
-    if (captchaFrame) {
-      log(`[${'Playwright'.green}] Найден iframe reCAPTCHA`);
+          const box = await checkbox.boundingBox();
+          if (!box) {
+            log(`[${'Playwright'.red}] Не удалось получить координаты чекбокса Turnstile.`);
+            break;
+          }
 
-      // Ждём появления чекбокса
-      const checkbox = captchaFrame.locator('.rc-anchor-content');
-      await checkbox.waitFor({ timeout: 15000 });
-      log(`[${'Playwright'.green}] Чекбокс найден, кликаем`);
-      await checkbox.click();
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
+          await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
-      // Дальнейшая логика — ожидание прохождения капчи
-      await page.waitForTimeout(5000);
-    } else {
-      log(`[${'Playwright'.yellow}] iframe reCAPTCHA не найден, продолжаем обычный клик`);
-      await page.mouse.click(100, 400);
+          try {
+            const response = await page.waitForNavigation({ timeout: 10000 });
+            if (response) {
+              log(`[${'Playwright'.green}] Навигация прошла успешно`);
+              redirectHappened = true;
+            } else {
+              log(`[${'Playwright'.yellow}] Редирект не произошел, пробую снова...`);
+            }
+          } catch (e) {
+            log(`[${'Playwright'.yellow}] Навигация не произошла: ${e.message}, пробую снова...`);
+          }
+
+          await sleep(3000);
+        }
+      } catch (e) {
+        log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
+      }
     }
-
-    await page.waitForTimeout(10000);
-    const title = await page.title();
-    log(`[${'Playwright'.blue}] Текущий тайтл: ${title}`);
-
-  } catch (e) {
-    log(`[${'Playwright'.red}] Ошибка: ${e.message}`);
-  }
-}
-
 
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
