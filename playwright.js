@@ -211,44 +211,51 @@ if (detected.name === "CloudFlare") {
     log(`[${'Playwright'.blue}] Ожидание 20 секунд перед началом...`);
     await page.waitForTimeout(20000);
 
-    const initialTitle = await page.title();
-    log(`[${'Playwright'.blue}] Стартовый тайтл: ${initialTitle}`);
+    let currentTitle = await page.title();
+    log(`[${'Playwright'.blue}] Стартовый тайтл: ${currentTitle}`);
 
-    // Находим первый кликабельный элемент (кнопка или ссылка)
-    const clickable = page.locator('a, button').first();
-    await clickable.waitFor({ timeout: 10000 });
-
-    // Получаем координаты
-    const box = await clickable.boundingBox();
-    if (!box) {
-      log(`[${'Playwright'.red}] Не удалось получить координаты кликабельного элемента.`);
-      await browser.close();
-      return;
-    }
-
-    const clickX = box.x + box.width / 2;
-    const clickY = box.y + box.height / 2;
-    log(`[${'Playwright'.green}] Координаты клика: X=${clickX}, Y=${clickY}`);
-
-    // Кликаем
-    await page.mouse.move(clickX, clickY);
-    await page.mouse.click(clickX, clickY);
-
-    // Ждём редирект
+    let attempt = 1;
     let redirectHappened = false;
-    try {
-      await page.waitForNavigation({ timeout: 20000 });
-      redirectHappened = true;
-    } catch {
-      redirectHappened = false;
-    }
 
-    // Логируем результат
-    const finalTitle = await page.title();
-    if (redirectHappened) {
-      log(`[${'Playwright'.green}] Редирект произошёл. Новый тайтл: ${finalTitle}`);
-    } else {
-      log(`[${'Playwright'.yellow}] Редирект не произошёл. Тайтл остался: ${finalTitle}`);
+    while (attempt <= 3 && !redirectHappened) {
+      log(`[${'Playwright'.yellow}] Попытка #${attempt}`);
+
+      // Находим первый кликабельный элемент
+      const clickable = page.locator('a, button').first();
+      await clickable.waitFor({ timeout: 10000 });
+
+      // Получаем координаты
+      const box = await clickable.boundingBox();
+      if (!box) {
+        log(`[${'Playwright'.red}] Не удалось получить координаты кликабельного элемента.`);
+        break;
+      }
+
+      const clickX = box.x + box.width / 2;
+      const clickY = box.y + box.height / 2;
+      log(`[${'Playwright'.green}] Координаты клика: X=${clickX}, Y=${clickY}`);
+
+      // Кликаем
+      await page.mouse.move(clickX, clickY);
+      await page.mouse.click(clickX, clickY);
+
+      // Ждём редирект
+      try {
+        await page.waitForNavigation({ timeout: 20000 });
+        redirectHappened = true;
+      } catch {
+        redirectHappened = false;
+      }
+
+      // Логируем тайтл
+      currentTitle = await page.title();
+      if (redirectHappened) {
+        log(`[${'Playwright'.green}] Редирект произошёл. Новый тайтл: ${currentTitle}`);
+      } else {
+        log(`[${'Playwright'.yellow}] Редирект не произошёл. Текущий тайтл: ${currentTitle}`);
+      }
+
+      attempt++;
     }
 
     log(`[${'Playwright'.blue}] Закрываю браузер.`);
