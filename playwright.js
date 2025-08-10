@@ -206,8 +206,6 @@ async function processProtection(page, label) {
   if (detected) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
-const fs = require('fs');
-
 if (detected.name === "CloudFlare") {
   try {
     let attempt = 1;
@@ -225,21 +223,41 @@ if (detected.name === "CloudFlare") {
         screenshotDone = true;
       }
 
-      const verifyElement = page.locator('text=Verify you are human').first();
+      // 1. Ждём длинную надпись
+      const longVerifyElement = page.locator('text=Verify you are human by completing the action below').first();
       try {
-        await verifyElement.waitFor({ timeout: 30000 });
+        await longVerifyElement.waitFor({ timeout: 30000 });
+        log(`[${'Playwright'.green}] Найдена надпись "Verify you are human by completing the action below".`);
       } catch {
-        const title = await page.title();
-        log(`[${'Playwright'.red}] Надпись не найдена. Title: ${title}`);
-        if (attempt >= 2) {
-          log(`[${'Playwright'.red}] После второй попытки надпись не найдена. Закрываю браузер.`);
-          await browser.close();
-        }
+        log(`[${'Playwright'.red}] Длинная надпись не найдена. Прерываю.`);
+        await browser.close();
         break;
       }
 
-      log(`[${'Playwright'.green}] Найдена надпись "Verify you are human".`);
+      // 2. Ждём короткую надпись
+      const verifyElement = page.locator('text=Verify you are human').first();
+      try {
+        await verifyElement.waitFor({ timeout: 30000 });
+        log(`[${'Playwright'.green}] Найдена надпись "Verify you are human".`);
+      } catch {
+        log(`[${'Playwright'.red}] Короткая надпись не найдена. Прерываю.`);
+        await browser.close();
+        break;
+      }
 
+      // 3. Проверяем "Verifying you are human..." (только на первой попытке)
+      if (attempt === 1) {
+        const verifyingText = page.locator('text=Verifying you are human. This may take a few seconds.').first();
+        if (await verifyingText.count() > 0) {
+          log(`[${'Playwright'.yellow}] Найдена надпись "Verifying you are human...". Жду 20 секунд и обновляю страницу.`);
+          await page.waitForTimeout(20000);
+          await page.reload();
+          attempt++;
+          continue;
+        }
+      }
+
+      // Координаты надписи
       const box = await verifyElement.boundingBox();
       if (!box) {
         log(`[${'Playwright'.red}] Не удалось получить координаты надписи.`);
@@ -290,9 +308,17 @@ if (detected.name === "CloudFlare") {
         redirectHappened = false;
         const title = await page.title();
         log(`[${'Playwright'.yellow}] Редирект не произошёл. Title: ${title}`);
+
+        // Дополнительно ждём редирект после второй попытки
         if (attempt >= 2) {
-          log(`[${'Playwright'.red}] После второй попытки редиректа нет. Закрываю браузер.`);
-          await browser.close();
+          log(`[${'Playwright'.yellow}] Жду ещё 20 секунд для редиректа после второй попытки...`);
+          try {
+            await page.waitForNavigation({ timeout: 20000 });
+            log(`[${'Playwright'.green}] Редирект произошёл на второй попытке (доп. ожидание).`);
+          } catch {
+            log(`[${'Playwright'.red}] Редирект так и не произошёл после второй попытки. Закрываю браузер.`);
+            await browser.close();
+          }
         }
       }
 
