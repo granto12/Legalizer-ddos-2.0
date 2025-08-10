@@ -200,54 +200,59 @@ async function processProtection(page, label) {
   }
 
 
-
-
   if (detected.name === "CloudFlare") {
-      try {
-          let redirectHappened = false;
+    try {
+      let redirectHappened = false;
   
-          // Ждём 19 секунд перед обработкой
-          log(`[${'Playwright'.cyan}] Жду 19 секунд перед обработкой Turnstile...`);
-          await sleep(19000);
+      // Ждём 19 секунд перед началом обработки
+      log(`[${'Playwright'.cyan}] Жду 19 секунд перед обработкой Turnstile...`);
+      await sleep(19000);
   
-          while (!redirectHappened) {
-              const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
-              if (!frame) {
-                  log(`[${'Playwright'.red}] Фрейм Turnstile не найден.`);
-                  break;
-              }
+      while (!redirectHappened) {
+        const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
+        if (!frame) {
+          log(`[${'Playwright'.red}] Фрейм Turnstile не найден.`);
+          break;
+        }
   
-              const checkbox = await frame.$('input[type="checkbox"]');
-              if (!checkbox) {
-                  log(`[${'Playwright'.red}] Чекбокс Turnstile не найден во фрейме.`);
-                  break;
-              }
+        const checkbox = await frame.$('input[type="checkbox"]');
+        if (!checkbox) {
+          log(`[${'Playwright'.red}] Чекбокс Turnstile не найден во фрейме.`);
+          break;
+        }
   
-              const box = await checkbox.boundingBox();
-              if (!box) {
-                  log(`[${'Playwright'.red}] Не удалось получить координаты чекбокса Turnstile.`);
-                  break;
-              }
+        const box = await checkbox.boundingBox();
+        if (!box) {
+          log(`[${'Playwright'.red}] Не удалось получить координаты чекбокса Turnstile.`);
+          break;
+        }
   
-              await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
-              await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
+        await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   
-              // Вместо навигации — просто ждём 5 секунд
-              log(`[${'Playwright'.cyan}] Клик выполнен, жду 5 секунд для возможного редиректа...`);
-              await sleep(5000);
+        // Вместо бесконечного ожидания навигации — проверка URL с тайм-аутом
+        const oldUrl = page.url();
+        try {
+          await Promise.race([
+            page.waitForNavigation({ timeout: 10000 }).catch(() => null),
+            sleep(3000) // чтобы не висеть вечно
+          ]);
+        } catch {}
   
-              // Проверяем, сменился ли URL
-              if (!page.url().includes('challenges.cloudflare.com')) {
-                  log(`[${'Playwright'.green}] Похоже, редирект прошёл успешно`);
-                  redirectHappened = true;
-              } else {
-                  log(`[${'Playwright'.yellow}] Всё ещё на странице проверки, пробую снова...`);
-              }
-          }
-      } catch (e) {
-          log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
+        if (page.url() !== oldUrl) {
+          log(`[${'Playwright'.green}] Навигация прошла успешно`);
+          redirectHappened = true;
+        } else {
+          log(`[${'Playwright'.yellow}] Редирект не произошел, пробую снова...`);
+        }
+  
+        await sleep(3000);
       }
+    } catch (e) {
+      log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
+    }
   }
+
   
   if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
