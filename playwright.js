@@ -206,8 +206,7 @@ async function processProtection(page, label) {
   if (detected) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
-const fs = require('fs');
-const Jimp = require('jimp');
+
 
 if (detected.name === "CloudFlare") {
   try {
