@@ -239,7 +239,7 @@ if (detected.name === "CloudFlare") {
       }
 
       // Клик на 10px левее первой буквы
-      const clickX = box.x - 10;
+      const clickX = box.x - 2.5;
       const clickY = box.y + box.height / 2;
 
       log(`[${'Playwright'.green}] Клик по координатам X=${clickX}, Y=${clickY}`);
