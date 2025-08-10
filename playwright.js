@@ -203,13 +203,13 @@ async function processProtection(page, label) {
   if (detected) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
-      if (detected.name === "CloudFlare") {
-    await sleep(19000); // ждём 19 секунд сразу после детекта
+  if (detected.name === "CloudFlare") {
+    await sleep(19000); // ждём 19 секунд после детекта
   
     try {
       const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
       if (!frame) {
-        log(`[${'Playwright'.red}] Фрейм Turnstile не найден — продолжаю выполнение.`);
+        log(`[${'Playwright'.red}] Чекбокс Turnstile не найден — продолжаю выполнение.`);
         return;
       }
   
@@ -243,7 +243,6 @@ async function processProtection(page, label) {
       log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
     }
   }
-      
 
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
