@@ -207,6 +207,7 @@ async function processProtection(page, label) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
 if (detected.name === "CloudFlare") {
+ if (detected.name === "CloudFlare") {
   try {
     log(`[${'Playwright'.blue}] Ожидание 20 секунд перед началом...`);
     await page.waitForTimeout(20000);
@@ -214,28 +215,36 @@ if (detected.name === "CloudFlare") {
     let currentTitle = await page.title();
     log(`[${'Playwright'.blue}] Стартовый тайтл: ${currentTitle}`);
 
+    // Получаем список всех кликабельных элементов (ссылки и кнопки)
+    const clickableElements = page.locator('a, button');
+    const totalElements = await clickableElements.count();
+
+    if (totalElements === 0) {
+      log(`[${'Playwright'.red}] На странице нет кликабельных элементов.`);
+      await browser.close();
+      return;
+    }
+
     let attempt = 1;
     let redirectHappened = false;
 
-    while (attempt <= 3 && !redirectHappened) {
+    while (attempt <= 3 && attempt <= totalElements && !redirectHappened) {
       log(`[${'Playwright'.yellow}] Попытка #${attempt}`);
 
-      // Находим первый кликабельный элемент
-      const clickable = page.locator('a, button').first();
+      const clickable = clickableElements.nth(attempt - 1); // Берём новый элемент
       await clickable.waitFor({ timeout: 10000 });
 
-      // Получаем координаты
       const box = await clickable.boundingBox();
       if (!box) {
-        log(`[${'Playwright'.red}] Не удалось получить координаты кликабельного элемента.`);
-        break;
+        log(`[${'Playwright'.red}] Не удалось получить координаты для элемента #${attempt}.`);
+        attempt++;
+        continue;
       }
 
       const clickX = box.x + box.width / 2;
       const clickY = box.y + box.height / 2;
-      log(`[${'Playwright'.green}] Координаты клика: X=${clickX}, Y=${clickY}`);
+      log(`[${'Playwright'.green}] Клик по элементу #${attempt}: X=${clickX}, Y=${clickY}`);
 
-      // Кликаем
       await page.mouse.move(clickX, clickY);
       await page.mouse.click(clickX, clickY);
 
