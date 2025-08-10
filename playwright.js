@@ -206,73 +206,42 @@ async function processProtection(page, label) {
   if (detected) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
+
+
 if (detected.name === "CloudFlare") {
   try {
     log(`[${'Playwright'.blue}] Ожидание 20 секунд перед началом...`);
     await page.waitForTimeout(20000);
 
-    let currentTitle = await page.title();
-    log(`[${'Playwright'.blue}] Стартовый тайтл: ${currentTitle}`);
+    // Ищем iframe с reCAPTCHA
+    const frames = page.frames();
+    const captchaFrame = frames.find(f => f.url().includes('google.com/recaptcha/api2/anchor'));
+    if (captchaFrame) {
+      log(`[${'Playwright'.green}] Найден iframe reCAPTCHA`);
 
-    // Получаем список всех кликабельных элементов (ссылки и кнопки)
-    const clickableElements = page.locator('a, button');
-    const totalElements = await clickableElements.count();
+      // Ждём появления чекбокса
+      const checkbox = captchaFrame.locator('.rc-anchor-content');
+      await checkbox.waitFor({ timeout: 15000 });
+      log(`[${'Playwright'.green}] Чекбокс найден, кликаем`);
+      await checkbox.click();
 
-    if (totalElements === 0) {
-      log(`[${'Playwright'.red}] На странице нет кликабельных элементов.`);
-      await browser.close();
-      return;
+      // Дальнейшая логика — ожидание прохождения капчи
+      await page.waitForTimeout(5000);
+    } else {
+      log(`[${'Playwright'.yellow}] iframe reCAPTCHA не найден, продолжаем обычный клик`);
+      await page.mouse.click(100, 400);
     }
 
-    let attempt = 1;
-    let redirectHappened = false;
+    await page.waitForTimeout(10000);
+    const title = await page.title();
+    log(`[${'Playwright'.blue}] Текущий тайтл: ${title}`);
 
-    while (attempt <= 3 && attempt <= totalElements && !redirectHappened) {
-      log(`[${'Playwright'.yellow}] Попытка #${attempt}`);
-
-      const clickable = clickableElements.nth(attempt - 1); // Берём новый элемент
-      await clickable.waitFor({ timeout: 10000 });
-
-      const box = await clickable.boundingBox();
-      if (!box) {
-        log(`[${'Playwright'.red}] Не удалось получить координаты для элемента #${attempt}.`);
-        attempt++;
-        continue;
-      }
-
-      const clickX = box.x + box.width / 2;
-      const clickY = box.y + box.height / 2;
-      log(`[${'Playwright'.green}] Клик по элементу #${attempt}: X=${clickX}, Y=${clickY}`);
-
-      await page.mouse.move(clickX, clickY);
-      await page.mouse.click(clickX, clickY);
-
-      // Ждём редирект
-      try {
-        await page.waitForNavigation({ timeout: 20000 });
-        redirectHappened = true;
-      } catch {
-        redirectHappened = false;
-      }
-
-      // Логируем тайтл
-      currentTitle = await page.title();
-      if (redirectHappened) {
-        log(`[${'Playwright'.green}] Редирект произошёл. Новый тайтл: ${currentTitle}`);
-      } else {
-        log(`[${'Playwright'.yellow}] Редирект не произошёл. Текущий тайтл: ${currentTitle}`);
-      }
-
-      attempt++;
-    }
-
-    log(`[${'Playwright'.blue}] Закрываю браузер.`);
-    await browser.close();
   } catch (e) {
     log(`[${'Playwright'.red}] Ошибка: ${e.message}`);
-    await browser.close();
   }
 }
+
+
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
         await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
