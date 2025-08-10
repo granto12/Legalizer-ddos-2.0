@@ -203,16 +203,16 @@ async function processProtection(page, label) {
   if (detected) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
+   
   if (detected.name === "CloudFlare") {
-    await sleep(19000); // ждём 19 секунд после детекта
-  
     try {
-      const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
-      if (!frame) {
-        log(`[${'Playwright'.red}] Чекбокс Turnstile не найден — продолжаю выполнение.`);
+      const frameHandle = await page.waitForSelector('iframe[src*="challenges.cloudflare.com"]', { timeout: 20000 });
+      if (!frameHandle) {
+        log(`[${'Playwright'.red}] Фрейм Turnstile не найден — продолжаю выполнение.`);
         return;
       }
   
+      const frame = await frameHandle.contentFrame();
       const checkbox = await frame.$('input[type="checkbox"]');
       if (!checkbox) {
         log(`[${'Playwright'.red}] Чекбокс Turnstile не найден — продолжаю выполнение.`);
@@ -228,22 +228,20 @@ async function processProtection(page, label) {
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
       await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   
-      try {
-        const response = await page.waitForNavigation({ timeout: 10000 });
-        if (response) {
-          log(`[${'Playwright'.green}] Навигация прошла успешно — продолжаю выполнение.`);
-        } else {
-          log(`[${'Playwright'.yellow}] Редирект не произошёл — продолжаю выполнение.`);
-        }
-      } catch (e) {
-        log(`[${'Playwright'.yellow}] Навигация не произошла: ${e.message} — продолжаю выполнение.`);
-      }
+      await Promise.race([
+        page.waitForNavigation({ timeout: 10000 }),
+        page.waitForTimeout(3000)
+      ]);
+  
+      log(`[${'Playwright'.green}] Проверка Turnstile завершена — продолжаю выполнение.`);
   
     } catch (e) {
       log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
     }
   }
 
+  
+  
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
         await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
