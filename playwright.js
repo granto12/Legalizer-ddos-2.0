@@ -2,6 +2,9 @@ const playwright = require('playwright');
 const colors = require('colors');
 const { spawn } = require('child_process');
 require('events').EventEmitter.defaultMaxListeners = Infinity;
+const fs = require('fs');
+const Jimp = require('jimp');
+
 
 const JSList = {
   js: [
@@ -203,16 +206,15 @@ async function processProtection(page, label) {
   if (detected) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
-
 if (detected.name === "CloudFlare") {
   try {
     let attempt = 1;
-    let screenshotDone = false; // чтобы сделать скрин только один раз
+    let screenshotDone = false;
 
     while (true) {
       log(`[${'Playwright'.yellow}] Попытка #${attempt}...`);
 
-      // Ждём появления надписи (не более 30 секунд)
+      // Ждём появления надписи
       const verifyElement = page.locator('text=Verify you are human').first();
       try {
         await verifyElement.waitFor({ timeout: 30000 });
@@ -223,14 +225,6 @@ if (detected.name === "CloudFlare") {
 
       log(`[${'Playwright'.green}] Найдена надпись "Verify you are human".`);
 
-      // Делаем скриншот только на второй попытке и только один раз
-      if (attempt === 2 && !screenshotDone) {
-        const screenshotPath = `verify_attempt_${Date.now()}.png`;
-        await page.screenshot({ path: screenshotPath, fullPage: true });
-        log(`[${'Playwright'.green}] Скриншот сохранён: ${screenshotPath}`);
-        screenshotDone = true;
-      }
-
       // Получаем координаты первой буквы текста
       const box = await verifyElement.boundingBox();
       if (!box) {
@@ -238,10 +232,39 @@ if (detected.name === "CloudFlare") {
         break;
       }
 
-      // Клик на 10px левее первой буквы
-      const clickX = box.x - 2.5;
-      const clickY = box.y + box.height / 2;
+      // Координаты клика
+      const clickX = Math.floor(box.x - 10);
+      const clickY = Math.floor(box.y + box.height / 2);
 
+      // Делаем скриншот только на второй попытке и один раз
+      if (attempt === 2 && !screenshotDone) {
+        const tempShot = `temp_screenshot_${Date.now()}.png`;
+        const finalShot = `verify_attempt_${Date.now()}.png`;
+
+        // Снимаем скрин всей страницы
+        await page.screenshot({ path: tempShot, fullPage: true });
+
+        // Загружаем скрин и рисуем красную точку
+        const img = await Jimp.read(tempShot);
+        const red = Jimp.rgbaToInt(255, 0, 0, 255);
+
+        // Рисуем точку радиусом 5 пикселей
+        for (let dx = -5; dx <= 5; dx++) {
+          for (let dy = -5; dy <= 5; dy++) {
+            if (dx * dx + dy * dy <= 25) {
+              img.setPixelColor(red, clickX + dx, clickY + dy);
+            }
+          }
+        }
+
+        await img.writeAsync(finalShot);
+        fs.unlinkSync(tempShot); // удаляем временный файл
+        log(`[${'Playwright'.green}] Скриншот с точкой сохранён: ${finalShot}`);
+
+        screenshotDone = true;
+      }
+
+      // Клик
       log(`[${'Playwright'.green}] Клик по координатам X=${clickX}, Y=${clickY}`);
       await page.mouse.move(clickX, clickY, { steps: 15 });
       await page.mouse.click(clickX, clickY);
@@ -258,14 +281,12 @@ if (detected.name === "CloudFlare") {
       const title = await page.title();
       log(`[${'Playwright'.green}] Title страницы: ${title}`);
 
-      // Если Just a moment..., пробуем снова
       if (title.trim() === 'Just a moment...') {
         log(`[${'Playwright'.yellow}] Страница всё ещё "Just a moment...", повторяю процедуру...`);
         attempt++;
         continue;
       }
 
-      // Если title другой — значит проверка пройдена
       log(`[${'Playwright'.green}] Проверка пройдена.`);
       break;
     }
@@ -273,7 +294,6 @@ if (detected.name === "CloudFlare") {
     log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare: ${e.message}`);
   }
 }
-
 
 
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
