@@ -4,74 +4,57 @@ const { spawn } = require('child_process');
 require('events').EventEmitter.defaultMaxListeners = Infinity;
 const fs = require('fs');
 
-
-
 const JSList = {
   js: [
-    {
-      name: "CloudFlare (Secure JS)",
-      navigations: 2,
-      locate: '<h2 class="h2" id="challenge-running">'
-    },
-    {
-      name: "CloudFlare",
-      navigations: 1,
-      locate: '<title>Just a moment...</title>'
-    },
-    {
-      name: "DDoS-Guard",
-      navigations: 1,
-      locate: 'document.getElementById("title").innerHTML="Проверка браузера перед переходом на сайт "+host;'
-    },
-    {
-      name: "DDoS-Guard-en",
-      navigations: 1,
-      locate: 'document.getElementById("description").innerHTML="This process is automatic. Your browser will redirect to your requested content shortly.<br>Please allow up to 5 seconds...";'
-    }
+    { name: "CloudFlare (Secure JS)", navigations: 2, locate: '<h2 class="h2" id="challenge-running">' },
+    { name: "CloudFlare", navigations: 1, locate: '<title>Just a moment...</title>' },
+    { name: "DDoS-Guard", navigations: 1, locate: 'document.getElementById("title").innerHTML="Проверка браузера перед переходом на сайт "+host;' },
+    { name: "DDoS-Guard-en", navigations: 1, locate: 'document.getElementById("description").innerHTML="This process is automatic. Your browser will redirect to your requested content shortly.<br>Please allow up to 5 seconds...";' }
   ]
 };
 
-const ignoreNames = [
-  "RequestError", "StatusCodeError", "CaptchaError",
-  "CloudflareError", "ParseError", "ParserError",
-  "TimeoutError", "DeprecationWarning"
-];
-
-const ignoreCodes = [
-  "ECONNRESET", "ERR_ASSERTION", "ECONNREFUSED",
-  "EPIPE", "EHOSTUNREACH", "ETIMEDOUT",
-  "ESOCKETTIMEDOUT", "EPROTO", "DEP0123",
-  "ERR_SSL_WRONG_VERSION_NUMBER", "NS_ERROR_CONNECTION_REFUSED"
-];
+const ignoreNames = ["RequestError", "StatusCodeError", "CaptchaError", "CloudflareError", "ParseError", "ParserError", "TimeoutError", "DeprecationWarning"];
+const ignoreCodes = ["ECONNRESET", "ERR_ASSERTION", "ECONNREFUSED", "EPIPE", "EHOSTUNREACH", "ETIMEDOUT", "ESOCKETTIMEDOUT", "EPROTO", "DEP0123", "ERR_SSL_WRONG_VERSION_NUMBER", "NS_ERROR_CONNECTION_REFUSED"];
 
 process.on("uncaughtException", handleError);
 process.on("unhandledRejection", handleError);
 process.on("warning", handleError);
-process.on("SIGHUP", () => {});
-process.on("SIGCHLD", () => {});
 
 function handleError(e) {
   if ((e.code && ignoreCodes.includes(e.code)) || (e.name && ignoreNames.includes(e.name))) return;
   console.warn(e);
 }
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+const randomIntFromInterval = (min, max) => Math.floor(Math.random() * (max - min + 1) + min);
+const cookiesToStr = (cookies) => cookies.map(({ name, value }) => `${name}=${value}`).join(";");
+const JSDetection = (html) => JSList.js.find(({ locate }) => html.includes(locate));
 
 function log(msg) {
-  const now = new Date();
-  const time = now.toTimeString().split(' ')[0];
+  const time = new Date().toTimeString().split(' ')[0];
   console.log(`(${time}) - ${msg}`);
 }
 
-const randomIntFromInterval = (min, max) =>
-  Math.floor(Math.random() * (max - min + 1) + min);
-
-function cookiesToStr(cookies) {
-  return cookies.map(({ name, value }) => `${name}=${value}`).join(";");
-}
-
-function JSDetection(html) {
-  return JSList.js.find(({ locate }) => html.includes(locate));
+function getRandomUAConfig() {
+  const configs = [
+    {
+      name: 'Windows Chrome',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+      viewport: { width: 1920, height: 1080 },
+      deviceScaleFactor: 1,
+      isMobile: false,
+      hasTouch: false
+    },
+    {
+      name: 'iPhone Safari',
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 3,
+      isMobile: true,
+      hasTouch: true
+    }
+  ];
+  return configs[Math.floor(Math.random() * configs.length)];
 }
 
 async function solverInstance(args) {
@@ -80,141 +63,19 @@ async function solverInstance(args) {
   const browser = await playwright.chromium.launch({
     headless: true,
     args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--disable-features=site-per-process,IsolateOrigins',
-      '--disable-infobars',
-      '--no-first-run',
-      '--ignore-certificate-errors',
-      '--ignore-ssl-errors',
-      '--no-default-browser-check',
-      '--disable-popup-blocking',
-      '--disable-extensions',
-      '--disable-background-networking',
-      '--disable-background-timer-throttling',
-      '--disable-renderer-backgrounding',
-      '--disable-hang-monitor',
-      '--disable-sync',
-      '--metrics-recording-only',
-      '--disable-default-apps',
-      '--mute-audio',
-      '--no-zygote',
-      '--max-connections-per-host=6',
-      '--autoplay-policy=no-user-gesture-required',
+      '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu',
+      '--disable-features=site-per-process,IsolateOrigins', '--disable-infobars', '--no-first-run',
+      '--ignore-certificate-errors', '--ignore-ssl-errors', '--no-default-browser-check',
+      '--disable-popup-blocking', '--disable-extensions', '--disable-background-networking',
+      '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-hang-monitor',
+      '--disable-sync', '--metrics-recording-only', '--disable-default-apps', '--mute-audio',
+      '--no-zygote', '--max-connections-per-host=6', '--autoplay-policy=no-user-gesture-required',
       '--disable-blink-features=AutomationControlled'
     ]
   });
 
- 
-
-  
-  function getRandomUAConfig() {
-    const configs = [
-      {
-        name: 'Windows Chrome',
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
-        viewport: { width: 1920, height: 1080 },
-        deviceScaleFactor: 1,
-        isMobile: false,
-        hasTouch: false
-      },
-      {
-        name: 'iPhone Safari',
-        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-        viewport: { width: 390, height: 844 },
-        deviceScaleFactor: 3,
-        isMobile: true,
-        hasTouch: true
-      }
-    ];
-    return configs[Math.floor(Math.random() * configs.length)];
-  }
-
   const uaConfig = getRandomUAConfig();
-  log(`(${`UA`.cyan}) Используется профиль: ${uaConfig.name.green}`);
-
-async function solverInstance(args) {
-  log(`(${`PlayWright`.cyan}) Запуск браузера.`);
-
-  const browser = await playwright.chromium.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--disable-features=site-per-process,IsolateOrigins',
-      '--disable-infobars',
-      '--no-first-run',
-      '--ignore-certificate-errors',
-      '--ignore-ssl-errors',
-      '--no-default-browser-check',
-      '--disable-popup-blocking',
-      '--disable-extensions',
-      '--disable-background-networking',
-      '--disable-background-timer-throttling',
-      '--disable-renderer-backgrounding',
-      '--disable-hang-monitor',
-      '--disable-sync',
-      '--metrics-recording-only',
-      '--disable-default-apps',
-      '--mute-audio',
-      '--no-zygote',
-      '--max-connections-per-host=6',
-      '--autoplay-policy=no-user-gesture-required',
-      '--disable-blink-features=AutomationControlled'
-    ]
-  });
-
-  function getRandomUAConfig() {
-    const configs = [
-      {
-        name: 'Windows Chrome',
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
-        viewport: { width: 1920, height: 1080 },
-        deviceScaleFactor: 1,
-        isMobile: false,
-        hasTouch: false
-      },
-      {
-        name: 'iPhone Safari',
-        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-        viewport: { width: 390, height: 844 },
-        deviceScaleFactor: 3,
-        isMobile: true,
-        hasTouch: true
-      }
-    ];
-    return configs[Math.floor(Math.random() * configs.length)];
-  }
-
-  // Выбираем рандомный UA
-  const uaConfig = getRandomUAConfig();
-  log(`[${'PlayWright'.blue}] Используем профиль: ${uaConfig.name}`);
-
-  // Создаём контекст с выбранным UA
-  const context = await browser.newContext({
-    userAgent: uaConfig.userAgent,
-    viewport: uaConfig.viewport,
-    deviceScaleFactor: uaConfig.deviceScaleFactor,
-    isMobile: uaConfig.isMobile,
-    hasTouch: uaConfig.hasTouch
-  });
-
-  // Добавляем куку перед переходом на сайт
-  await context.addCookies([{
-    name: 'ac_xf_user',
-    value: '229498',
-    domain: 'www.legalizer.com', // без https://
-    path: '/',
-    httpOnly: false,
-    secure: true,
-    sameSite: 'Lax'
-  }]);
-
- 
+  log(`[${'UA'.cyan}] Используется профиль: ${uaConfig.name.green}`);
 
   const context = await browser.newContext({
     userAgent: uaConfig.userAgent,
@@ -225,17 +86,24 @@ async function solverInstance(args) {
     javaScriptEnabled: true
   });
 
+  // Добавляем куку до открытия страницы
+  await context.addCookies([{
+    name: 'ac_xf_user',
+    value: '229498',
+    domain: 'www.legalizer.com',
+    path: '/',
+    httpOnly: false,
+    secure: true,
+    sameSite: 'Lax'
+  }]);
+
   const page = await context.newPage();
 
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'webdriver', { get: () => false });
     window.chrome = { runtime: {} };
-    Object.defineProperty(navigator, 'languages', {
-      get: () => ['ru-RU', 'ru']
-    });
-    Object.defineProperty(navigator, 'plugins', {
-      get: () => [1, 2, 3]
-    });
+    Object.defineProperty(navigator, 'languages', { get: () => ['ru-RU', 'ru'] });
+    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
     const getParameter = WebGLRenderingContext.prototype.getParameter;
     WebGLRenderingContext.prototype.getParameter = function (parameter) {
       if (parameter === 37445) return 'Intel Inc.';
@@ -259,8 +127,7 @@ async function solverInstance(args) {
 
   log(`(${`PlayWright`.cyan}) UA: ${uaConfig.userAgent.green}`);
 
-  await processProtection(page, 'JSDetect [1/2]');
-  await processProtection(page, 'JSDetect [2/2]');
+  await processProtection(page, browser);
 
   const cookies = cookiesToStr(await page.context().cookies());
   const title = await page.title();
@@ -277,178 +144,71 @@ async function solverInstance(args) {
   return cookies;
 }
 
-async function processProtection(page, label) {
+async function processProtection(page, browser) {
   const html = await page.content();
   const title = await page.title();
+  const detected = JSDetection(html);
 
   if (title === "Access denied") {
-    log(`(${label.red}) Доступ к странице запрещён.`);
+    log(`[JSDetect] Доступ к странице запрещён.`);
     return;
   }
 
-  const detected = JSDetection(html);
-  if (detected) {
-    log(`(${label.green}) защита: ${detected.name.yellow}`);
-
-if (detected.name === "CloudFlare") {
-  try {
+  if (detected && detected.name === "CloudFlare") {
     let attempt = 1;
     let screenshotDone = false;
 
     while (true) {
-      log(`[${'Playwright'.yellow}] Попытка #${attempt}...`);
+      log(`[CloudFlare] Попытка #${attempt}`);
 
-      // Скрин после второй попытки
       if (attempt === 2 && !screenshotDone) {
-        const finalShot = `verify_attempt_${Date.now()}.png`;
-        log(`[${'Playwright'.blue}] Делаю скриншот после второй попытки: ${finalShot}`);
-        await page.screenshot({ path: finalShot, fullPage: true });
-        log(`[${'Playwright'.green}] Скриншот сохранён: ${finalShot}`);
+        const shot = `verify_attempt_${Date.now()}.png`;
+        await page.screenshot({ path: shot, fullPage: true });
+        log(`[CloudFlare] Скриншот сохранён: ${shot}`);
         screenshotDone = true;
       }
 
-      // 1. Ждём длинную надпись
-      const longVerifyElement = page.locator('text=Verify you are human by completing the action below').first();
+      const verifyText = page.locator('text=Verifying you are human. This may take a few seconds.').first();
+      if (attempt === 1 && await verifyText.count() > 0) {
+        log(`[CloudFlare] Обнаружено "Verifying you are human...", жду 20с и перезагружаю.`);
+        await page.waitForTimeout(20000);
+        await page.reload();
+        attempt++;
+        continue;
+      }
+
+      // Клик по "Verify you are human"
+      const verifyBtn = page.locator('text=Verify you are human').first();
       try {
-        await longVerifyElement.waitFor({ timeout: 30000 });
-        log(`[${'Playwright'.green}] Найдена надпись "Verify you are human by completing the action below".`);
+        await verifyBtn.click({ delay: 200 });
+        log(`[CloudFlare] Клик по кнопке "Verify you are human"`);
       } catch {
-        log(`[${'Playwright'.red}] Длинная надпись не найдена. Прерываю.`);
-        await browser.close();
-        break;
+        log(`[CloudFlare] Кнопка не найдена`);
       }
 
-      // 2. Ждём короткую надпись
-      const verifyElement = page.locator('text=Verify you are human').first();
-      try {
-        await verifyElement.waitFor({ timeout: 30000 });
-        log(`[${'Playwright'.green}] Найдена надпись "Verify you are human".`);
-      } catch {
-        log(`[${'Playwright'.red}] Короткая надпись не найдена. Прерываю.`);
-        await browser.close();
-        break;
-      }
-
-      // 3. Проверяем "Verifying you are human..." (только на первой попытке)
-      if (attempt === 1) {
-        const verifyingText = page.locator('text=Verifying you are human. This may take a few seconds.').first();
-        if (await verifyingText.count() > 0) {
-          log(`[${'Playwright'.yellow}] Найдена надпись "Verifying you are human...". Жду 20 секунд и обновляю страницу.`);
-          await page.waitForTimeout(20000);
-          await page.reload();
-          attempt++;
-          continue;
-        }
-      }
-
-      // Координаты надписи
-      const box = await verifyElement.boundingBox();
-      if (!box) {
-        log(`[${'Playwright'.red}] Не удалось получить координаты надписи.`);
-        if (attempt >= 2) {
-          log(`[${'Playwright'.red}] После второй попытки координаты не найдены. Закрываю браузер.`);
-          await browser.close();
-        }
-        break;
-      }
-
-      const clickX = box.x - 2.5;
-      const clickY = box.y + box.height / 2 + 1;
-
-      // 1-й клик
-      await page.mouse.move(clickX, clickY, { steps: 20 });
-      await page.mouse.click(clickX, clickY);
-      log(`[${'Playwright'.green}] Первый клик X=${clickX}, Y=${clickY}`);
-      await page.waitForTimeout(800);
-
-      // 2-й клик со смещением
-      const offsetX = Math.floor(Math.random() * 21) + 10;
-      const offsetY = Math.floor(Math.random() * 11) - 5;
-      const secondX = clickX + offsetX;
-      const secondY = clickY + offsetY;
-      await page.mouse.move(secondX, secondY, { steps: 25 });
-      await page.mouse.click(secondX, secondY);
-      log(`[${'Playwright'.green}] Второй клик X=${secondX}, Y=${secondY}`);
-      await page.waitForTimeout(800);
-
-      // 3-й клик (возврат)
-      await page.mouse.move(clickX, clickY, { steps: 20 });
-      await page.mouse.click(clickX, clickY);
-      log(`[${'Playwright'.green}] Третий клик X=${clickX}, Y=${clickY}`);
-
-      // 4-й клик по фиксированным координатам
-      const fixedX = 145.5;
-      const fixedY = 225.5;
-      await page.mouse.move(fixedX, fixedY, { steps: 20 });
-      await page.mouse.click(fixedX, fixedY);
-      log(`[${'Playwright'.green}] Четвёртый клик X=${fixedX}, Y=${fixedY}`);
-
-      // Ждём редирект
-      let redirectHappened = true;
       try {
         await page.waitForNavigation({ timeout: 20000 });
-        log(`[${'Playwright'.green}] Редирект произошёл.`);
+        log(`[CloudFlare] Редирект произошёл`);
       } catch {
-        redirectHappened = false;
-        const title = await page.title();
-        log(`[${'Playwright'.yellow}] Редирект не произошёл. Title: ${title}`);
-
-        // Дополнительно ждём редирект после второй попытки
         if (attempt >= 2) {
-          log(`[${'Playwright'.yellow}] Жду ещё 20 секунд для редиректа после второй попытки...`);
+          log(`[CloudFlare] Ожидание редиректа после второй попытки`);
           try {
             await page.waitForNavigation({ timeout: 20000 });
-            log(`[${'Playwright'.green}] Редирект произошёл на второй попытке (доп. ожидание).`);
+            log(`[CloudFlare] Редирект произошёл после ожидания`);
           } catch {
-            log(`[${'Playwright'.red}] Редирект так и не произошёл после второй попытки. Закрываю браузер.`);
+            log(`[CloudFlare] Редиректа нет, закрываю браузер`);
             await browser.close();
+            return;
           }
         }
       }
 
-      const title = await page.title();
-      log(`[${'Playwright'.green}] Title страницы: ${title}`);
+      const newTitle = await page.title();
+      if (newTitle.trim() !== 'Just a moment...') break;
 
-      if (title.trim() === 'RC Forum Legalizer') {
-        const rcShot = `rc_forum_${Date.now()}.png`;
-        log(`[${'Playwright'.blue}] Делаю скриншот RC Forum Legalizer: ${rcShot}`);
-        await page.screenshot({ path: rcShot, fullPage: true });
-        log(`[${'Playwright'.green}] Скриншот RC Forum Legalizer сохранён: ${rcShot}`);
-      }
-
-      if (title.trim() === 'Just a moment...') {
-        log(`[${'Playwright'.yellow}] Just a moment..., повторяю процедуру...`);
-        attempt++;
-        continue;
-      }
-      break;
+      attempt++;
     }
-  } catch (e) {
-    log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare: ${e.message}`);
   }
 }
 
-
-    if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
-      for (let i = 0; i < 5; i++) {
-        await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
-      }
-      await page.mouse.down();
-      await page.mouse.move(100, 100);
-      await page.mouse.up();
-      await sleep(20630);
-      await page.reload({ waitUntil: 'domcontentloaded' });
-    }
-
-    for (let i = 0; i < detected.navigations; i++) {
-      await page.waitForNavigation();
-      log(`(${`Навигация`.green}) [${i + 1}/${detected.navigations}]`);
-    }
-  } else {
-    log(`(${label}) Девки нас не ждут заходим`);
-  }
-}
-
-module.exports = {
-  solverInstance
-};
+module.exports = { solverInstance };
