@@ -207,7 +207,6 @@ async function processProtection(page, label) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
 if (detected.name === "CloudFlare") {
- if (detected.name === "CloudFlare") {
   try {
     log(`[${'Playwright'.blue}] Ожидание 20 секунд перед началом...`);
     await page.waitForTimeout(20000);
