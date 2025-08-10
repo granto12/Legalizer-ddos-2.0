@@ -212,15 +212,25 @@ const fs = require('fs');
 const Jimp = require('jimp');
 
 
+if (detected.name === "CloudFlare") {const fs = require('fs');
+
 if (detected.name === "CloudFlare") {
   try {
     let attempt = 1;
-    let screenshotDone = false; // Скрин только один раз на второй попытке
+    let screenshotDone = false;
 
     while (true) {
       log(`[${'Playwright'.yellow}] Попытка #${attempt}...`);
 
-      // Ждём появления надписи
+      // Скрин после второй попытки
+      if (attempt === 2 && !screenshotDone) {
+        const finalShot = `verify_attempt_${Date.now()}.png`;
+        log(`[${'Playwright'.blue}] Делаю скриншот после второй попытки: ${finalShot}`);
+        await page.screenshot({ path: finalShot, fullPage: true });
+        log(`[${'Playwright'.green}] Скриншот сохранён: ${finalShot}`);
+        screenshotDone = true;
+      }
+
       const verifyElement = page.locator('text=Verify you are human').first();
       try {
         await verifyElement.waitFor({ timeout: 30000 });
@@ -236,7 +246,6 @@ if (detected.name === "CloudFlare") {
 
       log(`[${'Playwright'.green}] Найдена надпись "Verify you are human".`);
 
-      // Получаем координаты первой буквы
       const box = await verifyElement.boundingBox();
       if (!box) {
         log(`[${'Playwright'.red}] Не удалось получить координаты надписи.`);
@@ -247,23 +256,29 @@ if (detected.name === "CloudFlare") {
         break;
       }
 
-      // Клик: 2.5px влево и 1px вниз от первой буквы
       const clickX = box.x - 2.5;
       const clickY = box.y + box.height / 2 + 1;
 
-      // Скриншот только один раз на второй попытке
-      if (attempt === 2 && !screenshotDone) {
-        const finalShot = `verify_attempt_${Date.now()}.png`;
-        log(`[${'Playwright'.blue}] Делаю скриншот: ${finalShot}`);
-        await page.screenshot({ path: finalShot, fullPage: true });
-        log(`[${'Playwright'.green}] Скриншот сохранён: ${finalShot}`);
-        screenshotDone = true;
-      }
-
-      // Клик
-      log(`[${'Playwright'.green}] Клик по координатам X=${clickX}, Y=${clickY}`);
-      await page.mouse.move(clickX, clickY, { steps: 15 });
+      // 1-й клик
+      await page.mouse.move(clickX, clickY, { steps: 20 });
       await page.mouse.click(clickX, clickY);
+      log(`[${'Playwright'.green}] Первый клик X=${clickX}, Y=${clickY}`);
+      await page.waitForTimeout(800);
+
+      // 2-й клик со случайным смещением
+      const offsetX = Math.floor(Math.random() * 21) + 10;
+      const offsetY = Math.floor(Math.random() * 11) - 5;
+      const secondX = clickX + offsetX;
+      const secondY = clickY + offsetY;
+      await page.mouse.move(secondX, secondY, { steps: 25 });
+      await page.mouse.click(secondX, secondY);
+      log(`[${'Playwright'.green}] Второй клик X=${secondX}, Y=${secondY}`);
+      await page.waitForTimeout(800);
+
+      // 3-й клик (возврат)
+      await page.mouse.move(clickX, clickY, { steps: 20 });
+      await page.mouse.click(clickX, clickY);
+      log(`[${'Playwright'.green}] Третий клик X=${clickX}, Y=${clickY}`);
 
       // Ждём редирект
       let redirectHappened = true;
@@ -280,11 +295,9 @@ if (detected.name === "CloudFlare") {
         }
       }
 
-      // Получаем title
       const title = await page.title();
       log(`[${'Playwright'.green}] Title страницы: ${title}`);
 
-      // Скрин при RC Forum Legalizer
       if (title.trim() === 'RC Forum Legalizer') {
         const rcShot = `rc_forum_${Date.now()}.png`;
         log(`[${'Playwright'.blue}] Делаю скриншот RC Forum Legalizer: ${rcShot}`);
@@ -292,14 +305,11 @@ if (detected.name === "CloudFlare") {
         log(`[${'Playwright'.green}] Скриншот RC Forum Legalizer сохранён: ${rcShot}`);
       }
 
-      // Если Just a moment..., повторяем
       if (title.trim() === 'Just a moment...') {
-        log(`[${'Playwright'.yellow}] Страница всё ещё "Just a moment...", повторяю процедуру...`);
+        log(`[${'Playwright'.yellow}] Just a moment..., повторяю процедуру...`);
         attempt++;
         continue;
       }
-
-      // Выход из цикла
       break;
     }
   } catch (e) {
