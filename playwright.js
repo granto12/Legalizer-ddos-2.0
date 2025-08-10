@@ -221,20 +221,17 @@ if (detected.name === "CloudFlare") {
       // Кликаем
       await verifyElement.click({ timeout: 5000 });
 
-      // Ждём редирект
-      try {
-        await page.waitForNavigation({ timeout: 20000 });
-        const title = await page.title();
-        log(`[${'Playwright'.green}] Редирект успешен. Title: ${title}`);
-      } catch (e) {
-        log(`[${'Playwright'.yellow}] Редирект не произошёл: ${e.message}`);
-      }
+      // Ждём 5 секунд перед получением title
+      await page.waitForTimeout(5000);
+
+      // Получаем и выводим title
+      const title = await page.title();
+      log(`[${'Playwright'.green}] Title страницы: ${title}`);
     }
   } catch (e) {
     log(`[${'Playwright'.red}] Ошибка при обработке Verify you are human: ${e.message}`);
   }
 }
-
 
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
