@@ -209,16 +209,19 @@ if (detected.name === "CloudFlare") {
     // Ждём 30 секунд
     await page.waitForTimeout(30000);
 
-    // Ищем надпись Verify you are human
-    const verifyElement = await page.locator('text=Verify you are human').first();
+    // Ищем надпись "Verify you are human"
+    const verifyElement = page.locator('text=Verify you are human').first();
     const isVisible = await verifyElement.isVisible();
 
     if (!isVisible) {
       log(`[${'Playwright'.red}] Надпись "Verify you are human" не найдена.`);
     } else {
-      log(`[${'Playwright'.green}] Найдена надпись "Verify you are human". Ожидаю редирект...`);
+      log(`[${'Playwright'.green}] Найдена надпись "Verify you are human". Делаю клик...`);
+      
+      // Кликаем
+      await verifyElement.click({ timeout: 5000 });
 
-      // Ждём редиректа (новой навигации)
+      // Ждём редирект
       try {
         await page.waitForNavigation({ timeout: 20000 });
         const title = await page.title();
@@ -228,10 +231,11 @@ if (detected.name === "CloudFlare") {
       }
     }
   } catch (e) {
-    log(`[${'Playwright'.red}] Ошибка при ожидании Verify you are human: ${e.message}`);
+    log(`[${'Playwright'.red}] Ошибка при обработке Verify you are human: ${e.message}`);
   }
 }
- 
+
+
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
         await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
