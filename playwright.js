@@ -206,10 +206,13 @@ async function processProtection(page, label) {
   if (detected) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
+const fs = require('fs');
+const Jimp = require('jimp');
+
 if (detected.name === "CloudFlare") {
   try {
     let attempt = 1;
-    let screenshotDone = false;
+    let screenshotDone = false; // Скрин только один раз на второй попытке
 
     while (true) {
       log(`[${'Playwright'.yellow}] Попытка #${attempt}...`);
@@ -219,36 +222,33 @@ if (detected.name === "CloudFlare") {
       try {
         await verifyElement.waitFor({ timeout: 30000 });
       } catch {
-        log(`[${'Playwright'.red}] Надпись "Verify you are human" не найдена.`);
+        const title = await page.title();
+        log(`[${'Playwright'.red}] Надпись не найдена. Title: ${title}`);
         break;
       }
 
       log(`[${'Playwright'.green}] Найдена надпись "Verify you are human".`);
 
-      // Получаем координаты первой буквы текста
+      // Получаем координаты первой буквы
       const box = await verifyElement.boundingBox();
       if (!box) {
         log(`[${'Playwright'.red}] Не удалось получить координаты надписи.`);
         break;
       }
 
-      // Координаты клика
       const clickX = Math.floor(box.x - 10);
       const clickY = Math.floor(box.y + box.height / 2);
 
-      // Делаем скриншот только на второй попытке и один раз
+      // Скриншот только один раз на второй попытке
       if (attempt === 2 && !screenshotDone) {
         const tempShot = `temp_screenshot_${Date.now()}.png`;
         const finalShot = `verify_attempt_${Date.now()}.png`;
 
-        // Снимаем скрин всей страницы
         await page.screenshot({ path: tempShot, fullPage: true });
 
-        // Загружаем скрин и рисуем красную точку
         const img = await Jimp.read(tempShot);
         const red = Jimp.rgbaToInt(255, 0, 0, 255);
 
-        // Рисуем точку радиусом 5 пикселей
         for (let dx = -5; dx <= 5; dx++) {
           for (let dy = -5; dy <= 5; dy++) {
             if (dx * dx + dy * dy <= 25) {
@@ -258,9 +258,9 @@ if (detected.name === "CloudFlare") {
         }
 
         await img.writeAsync(finalShot);
-        fs.unlinkSync(tempShot); // удаляем временный файл
-        log(`[${'Playwright'.green}] Скриншот с точкой сохранён: ${finalShot}`);
+        fs.unlinkSync(tempShot);
 
+        log(`[${'Playwright'.green}] Скриншот с точкой сохранён: ${finalShot}`);
         screenshotDone = true;
       }
 
@@ -270,31 +270,41 @@ if (detected.name === "CloudFlare") {
       await page.mouse.click(clickX, clickY);
 
       // Ждём редирект
+      let redirectHappened = true;
       try {
         await page.waitForNavigation({ timeout: 20000 });
         log(`[${'Playwright'.green}] Редирект произошёл.`);
       } catch {
-        log(`[${'Playwright'.yellow}] Редирект не произошёл, продолжаю.`);
+        redirectHappened = false;
+        const title = await page.title();
+        log(`[${'Playwright'.yellow}] Редирект не произошёл. Title: ${title}`);
       }
 
       // Получаем title
       const title = await page.title();
       log(`[${'Playwright'.green}] Title страницы: ${title}`);
 
+      // Если тайтл RC Forum Legalizer → скрин
+      if (title.trim() === 'RC Forum Legalizer') {
+        const rcShot = `rc_forum_${Date.now()}.png`;
+        await page.screenshot({ path: rcShot, fullPage: true });
+        log(`[${'Playwright'.green}] RC Forum Legalizer — скриншот сохранён: ${rcShot}`);
+      }
+
+      // Если Just a moment..., повторяем
       if (title.trim() === 'Just a moment...') {
         log(`[${'Playwright'.yellow}] Страница всё ещё "Just a moment...", повторяю процедуру...`);
         attempt++;
         continue;
       }
 
-      log(`[${'Playwright'.green}] Проверка пройдена.`);
+      // Выход из цикла
       break;
     }
   } catch (e) {
     log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare: ${e.message}`);
   }
 }
-
 
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
