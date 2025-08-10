@@ -211,68 +211,44 @@ if (detected.name === "CloudFlare") {
     log(`[${'Playwright'.blue}] Ожидание 20 секунд перед началом...`);
     await page.waitForTimeout(20000);
 
-    let currentTitle = await page.title();
-    log(`[${'Playwright'.blue}] Стартовый тайтл: ${currentTitle}`);
+    const verifyElements = page.locator('text=Verify you are human');
+    const count = await verifyElements.count();
 
-    // Получаем список всех кликабельных элементов (ссылки и кнопки)
-    const clickableElements = page.locator('a, button');
-    const totalElements = await clickableElements.count();
-
-    if (totalElements === 0) {
-      log(`[${'Playwright'.red}] На странице нет кликабельных элементов.`);
-      await browser.close();
-      return;
-    }
-
-    let attempt = 1;
-    let redirectHappened = false;
-
-    while (attempt <= 3 && attempt <= totalElements && !redirectHappened) {
-      log(`[${'Playwright'.yellow}] Попытка #${attempt}`);
-
-      const clickable = clickableElements.nth(attempt - 1); // Берём новый элемент
-      await clickable.waitFor({ timeout: 10000 });
-
-      const box = await clickable.boundingBox();
-      if (!box) {
-        log(`[${'Playwright'.red}] Не удалось получить координаты для элемента #${attempt}.`);
-        attempt++;
-        continue;
-      }
-
-      const clickX = box.x + box.width / 2;
-      const clickY = box.y + box.height / 2;
-      log(`[${'Playwright'.green}] Клик по элементу #${attempt}: X=${clickX}, Y=${clickY}`);
-
-      await page.mouse.move(clickX, clickY);
-      await page.mouse.click(clickX, clickY);
-
-      // Ждём редирект
-      try {
-        await page.waitForNavigation({ timeout: 20000 });
-        redirectHappened = true;
-      } catch {
-        redirectHappened = false;
-      }
-
-      // Логируем тайтл
-      currentTitle = await page.title();
-      if (redirectHappened) {
-        log(`[${'Playwright'.green}] Редирект произошёл. Новый тайтл: ${currentTitle}`);
+    if (count === 0) {
+      log(`[${'Playwright'.red}] Элементы "Verify you are human" не найдены.`);
+    } else {
+      // Первый найденный элемент
+      const firstBox = await verifyElements.nth(0).boundingBox();
+      if (firstBox) {
+        log(`[${'Playwright'.green}] Первый элемент: X=${firstBox.x.toFixed(2)}, Y=${firstBox.y.toFixed(2)}, W=${firstBox.width.toFixed(2)}, H=${firstBox.height.toFixed(2)}`);
       } else {
-        log(`[${'Playwright'.yellow}] Редирект не произошёл. Текущий тайтл: ${currentTitle}`);
+        log(`[${'Playwright'.red}] Не удалось получить boundingBox первого элемента.`);
       }
 
-      attempt++;
+      // Второй найденный элемент (если есть)
+      if (count > 1) {
+        const secondBox = await verifyElements.nth(1).boundingBox();
+        if (secondBox) {
+          log(`[${'Playwright'.green}] Второй элемент: X=${secondBox.x.toFixed(2)}, Y=${secondBox.y.toFixed(2)}, W=${secondBox.width.toFixed(2)}, H=${secondBox.height.toFixed(2)}`);
+        } else {
+          log(`[${'Playwright'.red}] Не удалось получить boundingBox второго элемента.`);
+        }
+      } else {
+        log(`[${'Playwright'.yellow}] Второго элемента "Verify you are human" на странице нет.`);
+      }
     }
 
-    log(`[${'Playwright'.blue}] Закрываю браузер.`);
-    await browser.close();
+    // Логируем тайтл и закрываем браузер
+    const title = await page.title();
+    log(`[${'Playwright'.blue}] Текущий тайтл: ${title}`);
+    await page.context().browser().close();
+
   } catch (e) {
     log(`[${'Playwright'.red}] Ошибка: ${e.message}`);
-    await browser.close();
+    await page.context().browser().close();
   }
 }
+
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
         await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
