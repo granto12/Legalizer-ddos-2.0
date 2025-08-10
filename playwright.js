@@ -228,21 +228,34 @@ if (detected.name === "CloudFlare") {
         screenshotDone = true;
       }
 
-      const verifyElement = page.locator('text=Verify you are human').first();
+      // Ищем блок с нужными словами
+      const blockLocator = page.locator('text=Verify you are human').locator('..'); // родительский элемент
+      let found = false;
+
       try {
-        await verifyElement.waitFor({ timeout: 30000 });
+        await blockLocator.waitFor({ timeout: 30000 });
+        const blockText = await blockLocator.innerText();
+        if (blockText.toLowerCase().includes("verify you are human".toLowerCase()) &&
+            blockText.toLowerCase().includes("privacy")) {
+          found = true;
+        }
       } catch {
+        log(`[${'Playwright'.red}] Блок с 'Verify you are human' не найден.`);
+      }
+
+      if (!found) {
         const title = await page.title();
-        log(`[${'Playwright'.red}] Надпись не найдена. Title: ${title}`);
+        log(`[${'Playwright'.red}] Не найдена комбинация 'privacy' + 'Verify you are human'. Title: ${title}`);
         if (attempt >= 2) {
-          log(`[${'Playwright'.red}] После второй попытки надпись не найдена. Закрываю браузер.`);
+          log(`[${'Playwright'.red}] После второй попытки комбинация не найдена. Закрываю браузер.`);
           await browser.close();
         }
         break;
       }
 
-      log(`[${'Playwright'.green}] Найдена надпись "Verify you are human".`);
+      log(`[${'Playwright'.green}] Найден блок с 'privacy' и 'Verify you are human'.`);
 
+      const verifyElement = page.locator('text=Verify you are human').first();
       const box = await verifyElement.boundingBox();
       if (!box) {
         log(`[${'Playwright'.red}] Не удалось получить координаты надписи.`);
@@ -291,6 +304,13 @@ if (detected.name === "CloudFlare") {
           await browser.close();
         }
       }
+
+      attempt++;
+    }
+  } catch (e) {
+    log(`[${'Playwright'.red}] Ошибка: ${e.message}`);
+  }
+}
 
       const title = await page.title();
       log(`[${'Playwright'.green}] Title страницы: ${title}`);
