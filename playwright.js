@@ -3,7 +3,7 @@ const colors = require('colors');
 const { spawn } = require('child_process');
 require('events').EventEmitter.defaultMaxListeners = Infinity;
 const fs = require('fs');
-const Jimp = require('jimp');
+
 
 
 const JSList = {
@@ -211,6 +211,7 @@ async function processProtection(page, label) {
 const fs = require('fs');
 const Jimp = require('jimp');
 
+
 if (detected.name === "CloudFlare") {
   try {
     let attempt = 1;
@@ -246,32 +247,16 @@ if (detected.name === "CloudFlare") {
         break;
       }
 
-      const clickX = Math.floor(box.x - 10);
-      const clickY = Math.floor(box.y + box.height / 2);
+      // Клик: 2.5px влево и 1px вниз от первой буквы
+      const clickX = box.x - 2.5;
+      const clickY = box.y + box.height / 2 + 1;
 
-      // Скриншот с точкой только один раз на второй попытке
+      // Скриншот только один раз на второй попытке
       if (attempt === 2 && !screenshotDone) {
-        const tempShot = `temp_screenshot_${Date.now()}.png`;
         const finalShot = `verify_attempt_${Date.now()}.png`;
-
-        await page.screenshot({ path: tempShot, fullPage: true });
-        log(`[${'Playwright'.blue}] Делаю скриншот с точкой: ${finalShot}`);
-
-        const img = await Jimp.read(tempShot);
-        const red = Jimp.rgbaToInt(255, 0, 0, 255);
-
-        for (let dx = -5; dx <= 5; dx++) {
-          for (let dy = -5; dy <= 5; dy++) {
-            if (dx * dx + dy * dy <= 25) {
-              img.setPixelColor(red, clickX + dx, clickY + dy);
-            }
-          }
-        }
-
-        await img.writeAsync(finalShot);
-        fs.unlinkSync(tempShot);
-
-        log(`[${'Playwright'.green}] Скриншот с точкой сохранён: ${finalShot}`);
+        log(`[${'Playwright'.blue}] Делаю скриншот: ${finalShot}`);
+        await page.screenshot({ path: finalShot, fullPage: true });
+        log(`[${'Playwright'.green}] Скриншот сохранён: ${finalShot}`);
         screenshotDone = true;
       }
 
