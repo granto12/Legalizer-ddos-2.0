@@ -203,53 +203,35 @@ async function processProtection(page, label) {
   if (detected) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
-    if (detected.name === "CloudFlare") {
+
+if (detected.name === "CloudFlare") {
+  try {
+    // Ждём 30 секунд
+    await page.waitForTimeout(30000);
+
+    // Ищем надпись Verify you are human
+    const verifyElement = await page.locator('text=Verify you are human').first();
+    const isVisible = await verifyElement.isVisible();
+
+    if (!isVisible) {
+      log(`[${'Playwright'.red}] Надпись "Verify you are human" не найдена.`);
+    } else {
+      log(`[${'Playwright'.green}] Найдена надпись "Verify you are human". Ожидаю редирект...`);
+
+      // Ждём редиректа (новой навигации)
       try {
-        let redirectHappened = false;
-
-        while (!redirectHappened) {
-          const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
-          if (!frame) {
-            await sleep(8800);
-            log(`[${'Playwright'.red}] Фрейм Turnstile не найден.`);
-            break;
-          }
-
-          const checkbox = await frame.$('input[type="checkbox"]');
-          if (!checkbox) {
-            log(`[${'Playwright'.red}] Чекбокс Turnstile не найден во фрейме.`);
-            break;
-          }
-
-          const box = await checkbox.boundingBox();
-          if (!box) {
-            log(`[${'Playwright'.red}] Не удалось получить координаты чекбокса Turnstile.`);
-            break;
-          }
-
-          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
-          await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-
-          try {
-            const response = await page.waitForNavigation({ timeout: 10000 });
-            if (response) {
-              log(`[${'Playwright'.green}] Навигация прошла успешно`);
-              redirectHappened = true;
-            } else {
-              log(`[${'Playwright'.yellow}] Редирект не произошел, пробую снова...`);
-            }
-          } catch (e) {
-            log(`[${'Playwright'.yellow}] Навигация не произошла: ${e.message}, пробую снова...`);
-          }
-
-          await sleep(3000);
-        }
+        await page.waitForNavigation({ timeout: 20000 });
+        const title = await page.title();
+        log(`[${'Playwright'.green}] Редирект успешен. Title: ${title}`);
       } catch (e) {
-        log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
+        log(`[${'Playwright'.yellow}] Редирект не произошёл: ${e.message}`);
       }
     }
-
-
+  } catch (e) {
+    log(`[${'Playwright'.red}] Ошибка при ожидании Verify you are human: ${e.message}`);
+  }
+}
+ 
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
         await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
