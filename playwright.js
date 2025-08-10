@@ -199,62 +199,57 @@ async function processProtection(page, label) {
     return;
   }
 
+  const detected = JSDetection(html);
+  if (detected) {
+    log(`(${label.green}) защита: ${detected.name.yellow}`);
 
-  if (detected.name === "CloudFlare") {
-    try {
-      let redirectHappened = false;
-  
-      // Ждём 19 секунд перед началом обработки
-      log(`[${'Playwright'.cyan}] Жду 19 секунд перед обработкой Turnstile...`);
-      await sleep(19000);
-  
-      while (!redirectHappened) {
-        const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
-        if (!frame) {
-          log(`[${'Playwright'.red}] Фрейм Turnstile не найден.`);
-          break;
+    if (detected.name === "CloudFlare") {
+      try {
+        let redirectHappened = false;
+
+        while (!redirectHappened) {
+          const frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
+          if (!frame) {
+            await sleep(8800);
+            log(`[${'Playwright'.red}] Фрейм Turnstile не найден.`);
+            break;
+          }
+
+          const checkbox = await frame.$('input[type="checkbox"]');
+          if (!checkbox) {
+            log(`[${'Playwright'.red}] Чекбокс Turnstile не найден во фрейме.`);
+            break;
+          }
+
+          const box = await checkbox.boundingBox();
+          if (!box) {
+            log(`[${'Playwright'.red}] Не удалось получить координаты чекбокса Turnstile.`);
+            break;
+          }
+
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
+          await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+          try {
+            const response = await page.waitForNavigation({ timeout: 10000 });
+            if (response) {
+              log(`[${'Playwright'.green}] Навигация прошла успешно`);
+              redirectHappened = true;
+            } else {
+              log(`[${'Playwright'.yellow}] Редирект не произошел, пробую снова...`);
+            }
+          } catch (e) {
+            log(`[${'Playwright'.yellow}] Навигация не произошла: ${e.message}, пробую снова...`);
+          }
+
+          await sleep(3000);
         }
-  
-        const checkbox = await frame.$('input[type="checkbox"]');
-        if (!checkbox) {
-          log(`[${'Playwright'.red}] Чекбокс Turnstile не найден во фрейме.`);
-          break;
-        }
-  
-        const box = await checkbox.boundingBox();
-        if (!box) {
-          log(`[${'Playwright'.red}] Не удалось получить координаты чекбокса Turnstile.`);
-          break;
-        }
-  
-        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
-        await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  
-        // Вместо бесконечного ожидания навигации — проверка URL с тайм-аутом
-        const oldUrl = page.url();
-        try {
-          await Promise.race([
-            page.waitForNavigation({ timeout: 10000 }).catch(() => null),
-            sleep(3000) // чтобы не висеть вечно
-          ]);
-        } catch {}
-  
-        if (page.url() !== oldUrl) {
-          log(`[${'Playwright'.green}] Навигация прошла успешно`);
-          redirectHappened = true;
-        } else {
-          log(`[${'Playwright'.yellow}] Редирект не произошел, пробую снова...`);
-        }
-  
-        await sleep(3000);
+      } catch (e) {
+        log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
       }
-    } catch (e) {
-      log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
     }
-  }
 
-  
-  if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
+    if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
         await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
       }
