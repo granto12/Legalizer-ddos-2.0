@@ -211,7 +211,7 @@ async function processProtection(page, label) {
       for (let attempt = 1; attempt <= maxAttempts && !redirectHappened; attempt++) {
         log(`[${'Playwright'.cyan}] Попытка обхода Turnstile: ${attempt}/${maxAttempts}`);
   
-        // Ждём появления фрейма
+        // Ждём появления iframe
         let frame = null;
         for (let i = 0; i < 5 && !frame; i++) {
           frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
@@ -222,48 +222,50 @@ async function processProtection(page, label) {
   
         if (!frame) {
           log(`[${'Playwright'.red}] Фрейм Turnstile не найден.`);
-          break;
+          continue;
         }
   
         // Ждём чекбокс
         const checkbox = await frame.waitForSelector('input[type="checkbox"]', { timeout: 5000 }).catch(() => null);
         if (!checkbox) {
           log(`[${'Playwright'.red}] Чекбокс Turnstile не найден во фрейме.`);
-          break;
+          continue;
         }
   
-        // Координаты чекбокса
+        // Получаем координаты
         const box = await checkbox.boundingBox();
         if (!box) {
           log(`[${'Playwright'.red}] Не удалось получить координаты чекбокса Turnstile.`);
-          break;
+          continue;
         }
   
-        // Наводим и кликаем
+        // Плавное движение и клик
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 15 });
         await sleep(300 + Math.random() * 500);
         await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { delay: 100 + Math.random() * 100 });
   
-        // Ждём редирект
+        // Ждём навигацию
         try {
           const response = await page.waitForNavigation({ timeout: 8000 });
           if (response) {
             log(`[${'Playwright'.green}] Навигация прошла успешно`);
             redirectHappened = true;
           } else {
-            log(`[${'Playwright'.yellow}] Редирект не произошёл, пробую снова...`);
+            log(`[${'Playwright'.yellow}] Редирект не произошёл`);
           }
         } catch {
-          log(`[${'Playwright'.yellow}] Навигация не произошла, пробую снова...`);
+          log(`[${'Playwright'.yellow}] Навигация не произошла`);
         }
   
         await sleep(2000);
       }
   
-      // Если не обошли
+      // Если не получилось
       if (!redirectHappened) {
+        log(`[${'Playwright'.red}] Не удалось пройти Turnstile. Жду 10 секунд перед логом заголовка...`);
+        await sleep(10000);
         const title = await page.title();
-        log(`[${'Playwright'.red}] Не удалось пройти Turnstile. Title страницы: "${title}"`);
+        log(`[${'Playwright'.red}] Title страницы: "${title}"`);
         await page.context().browser().close();
         return;
       }
@@ -272,6 +274,7 @@ async function processProtection(page, label) {
   
     } catch (e) {
       log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
+      await sleep(10000);
       const title = await page.title();
       log(`[${'Playwright'.red}] Title страницы: "${title}"`);
       await page.context().browser().close();
