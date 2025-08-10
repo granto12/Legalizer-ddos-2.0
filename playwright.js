@@ -110,7 +110,7 @@ async function solverInstance(args) {
  await context.addCookies([{
     name: 'ac_xf_user',
     value: '229498',
-    domain: 'example.com', // ← сюда вставь домен сайта
+    domain: 'www.legalizer.com', // ← сюда вставь домен сайта
     path: '/',
     httpOnly: false,
     secure: false,
