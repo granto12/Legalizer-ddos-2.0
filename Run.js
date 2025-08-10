@@ -4,10 +4,10 @@ const readline = require('readline');
 
 const baseArgs = {
   Target: "https://www.legalizer.cc/",
-  Time: "400",
+  Time: "20",
   Method: "TLSv1",
-  Rate: "80",
-  Threads: "10"
+  Rate: "20",
+  Threads: "2"
 };
 
 
