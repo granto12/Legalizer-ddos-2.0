@@ -13,7 +13,7 @@ const JSList = {
     {
       name: "CloudFlare",
       navigations: 1,
-      locate: '<title>Just a moment...</title>'
+      locate: '<title>Один момент...</title>'
     },
     {
       name: "DDoS-Guard",
