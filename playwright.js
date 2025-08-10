@@ -206,7 +206,6 @@ async function processProtection(page, label) {
   if (detected) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
-
 if (detected.name === "CloudFlare") {
   try {
     let attempt = 1;
@@ -224,80 +223,48 @@ if (detected.name === "CloudFlare") {
         screenshotDone = true;
       }
 
-      // Сначала ищем элемент с "privacy"
-      const privacyElement = page.locator('text=/privacy/i').first();
-      let found = false;
+      // Запоминаем текущий тайтл
+      const initialTitle = await page.title();
+      log(`[${'Playwright'.blue}] Текущий тайтл: ${initialTitle}`);
 
-      try {
-        await privacyElement.waitFor({ timeout: 30000 });
-        const blockLocator = privacyElement.locator('..'); // Родительский элемент
-        const blockText = await blockLocator.innerText();
-
-        if (blockText.toLowerCase().includes("verify you are human")) {
-          found = true;
-        }
-      } catch {
-        log(`[${'Playwright'.red}] Элемент с 'privacy' не найден.`);
-      }
-
-      if (!found) {
-        const title = await page.title();
-        log(`[${'Playwright'.red}] Не найден блок с 'privacy' и 'Verify you are human'. Title: ${title}`);
-        if (attempt >= 2) {
-          log(`[${'Playwright'.red}] После второй попытки комбинация не найдена. Закрываю браузер.`);
-          await browser.close();
-        }
-        break;
-      }
-
-      log(`[${'Playwright'.green}] Найден блок с 'privacy' и 'Verify you are human'.`);
-
-      const verifyElement = page.locator('text=Verify you are human').first();
-      const box = await verifyElement.boundingBox();
-      if (!box) {
-        log(`[${'Playwright'.red}] Не удалось получить координаты надписи.`);
-        if (attempt >= 2) {
-          log(`[${'Playwright'.red}] После второй попытки координаты не найдены. Закрываю браузер.`);
-          await browser.close();
-        }
-        break;
-      }
-
-      const clickX = box.x - 2.5;
-      const clickY = box.y + box.height / 2 + 1;
-
-      // 1-й клик
-      await page.mouse.move(clickX, clickY, { steps: 20 });
-      await page.mouse.click(clickX, clickY);
-      log(`[${'Playwright'.green}] Первый клик X=${clickX}, Y=${clickY}`);
+      // Клик 1
+      const click1X = 393.46;
+      const click1Y = 158.45;
+      await page.mouse.move(click1X, click1Y, { steps: 20 });
+      await page.mouse.click(click1X, click1Y);
+      log(`[${'Playwright'.green}] Клик 1: X=${click1X}, Y=${click1Y}`);
       await page.waitForTimeout(800);
 
-      // 2-й клик со случайным смещением
-      const offsetX = Math.floor(Math.random() * 21) + 10;
-      const offsetY = Math.floor(Math.random() * 11) - 5;
-      const secondX = clickX + offsetX;
-      const secondY = clickY + offsetY;
-      await page.mouse.move(secondX, secondY, { steps: 25 });
-      await page.mouse.click(secondX, secondY);
-      log(`[${'Playwright'.green}] Второй клик X=${secondX}, Y=${secondY}`);
+      // Клик 2
+      const click2X = 79.92;
+      const click2Y = 123.83;
+      await page.mouse.move(click2X, click2Y, { steps: 20 });
+      await page.mouse.click(click2X, click2Y);
+      log(`[${'Playwright'.green}] Клик 2: X=${click2X}, Y=${click2Y}`);
       await page.waitForTimeout(800);
-
-      // 3-й клик (возврат)
-      await page.mouse.move(clickX, clickY, { steps: 20 });
-      await page.mouse.click(clickX, clickY);
-      log(`[${'Playwright'.green}] Третий клик X=${clickX}, Y=${clickY}`);
 
       // Ждём редирект
+      let redirectHappened = false;
       try {
         await page.waitForNavigation({ timeout: 20000 });
-        log(`[${'Playwright'.green}] Редирект произошёл.`);
+        redirectHappened = true;
       } catch {
-        const title = await page.title();
-        log(`[${'Playwright'.yellow}] Редирект не произошёл. Title: ${title}`);
-        if (attempt >= 2) {
-          log(`[${'Playwright'.red}] После второй попытки редиректа нет. Закрываю браузер.`);
-          await browser.close();
-        }
+        redirectHappened = false;
+      }
+
+      // Логируем результат
+      const newTitle = await page.title();
+      if (redirectHappened) {
+        log(`[${'Playwright'.green}] Редирект произошёл. Новый тайтл: ${newTitle}`);
+      } else {
+        log(`[${'Playwright'.yellow}] Редирект не произошёл. Тайтл: ${newTitle}`);
+      }
+
+      // Если тайтл не изменился — закрываем браузер
+      if (initialTitle === newTitle) {
+        log(`[${'Playwright'.red}] Тайтл не изменился. Закрываю браузер.`);
+        await browser.close();
+        break;
       }
 
       attempt++;
