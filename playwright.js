@@ -208,72 +208,56 @@ async function processProtection(page, label) {
 
 if (detected.name === "CloudFlare") {
   try {
-    let attempt = 1;
-    let screenshotDone = false;
+    log(`[${'Playwright'.blue}] Ожидание 20 секунд перед началом...`);
+    await page.waitForTimeout(20000);
 
-    while (true) {
-      log(`[${'Playwright'.yellow}] Попытка #${attempt}...`);
+    const initialTitle = await page.title();
+    log(`[${'Playwright'.blue}] Стартовый тайтл: ${initialTitle}`);
 
-      // Скрин после второй попытки
-      if (attempt === 2 && !screenshotDone) {
-        const finalShot = `verify_attempt_${Date.now()}.png`;
-        log(`[${'Playwright'.blue}] Делаю скриншот после второй попытки: ${finalShot}`);
-        await page.screenshot({ path: finalShot, fullPage: true });
-        log(`[${'Playwright'.green}] Скриншот сохранён: ${finalShot}`);
-        screenshotDone = true;
-      }
+    // Находим первый кликабельный элемент (кнопка или ссылка)
+    const clickable = page.locator('a, button').first();
+    await clickable.waitFor({ timeout: 10000 });
 
-      // Запоминаем текущий тайтл
-      const initialTitle = await page.title();
-      log(`[${'Playwright'.blue}] Текущий тайтл: ${initialTitle}`);
-
-      // Клик 1
-      const click1X = 393.46;
-      const click1Y = 158.45;
-      await page.mouse.move(click1X, click1Y, { steps: 20 });
-      await page.mouse.click(click1X, click1Y);
-      log(`[${'Playwright'.green}] Клик 1: X=${click1X}, Y=${click1Y}`);
-      await page.waitForTimeout(800);
-
-      // Клик 2
-      const click2X = 79.92;
-      const click2Y = 123.83;
-      await page.mouse.move(click2X, click2Y, { steps: 20 });
-      await page.mouse.click(click2X, click2Y);
-      log(`[${'Playwright'.green}] Клик 2: X=${click2X}, Y=${click2Y}`);
-      await page.waitForTimeout(800);
-
-      // Ждём редирект
-      let redirectHappened = false;
-      try {
-        await page.waitForNavigation({ timeout: 20000 });
-        redirectHappened = true;
-      } catch {
-        redirectHappened = false;
-      }
-
-      // Логируем результат
-      const newTitle = await page.title();
-      if (redirectHappened) {
-        log(`[${'Playwright'.green}] Редирект произошёл. Новый тайтл: ${newTitle}`);
-      } else {
-        log(`[${'Playwright'.yellow}] Редирект не произошёл. Тайтл: ${newTitle}`);
-      }
-
-      // Если тайтл не изменился — закрываем браузер
-      if (initialTitle === newTitle) {
-        log(`[${'Playwright'.red}] Тайтл не изменился. Закрываю браузер.`);
-        await browser.close();
-        break;
-      }
-
-      attempt++;
+    // Получаем координаты
+    const box = await clickable.boundingBox();
+    if (!box) {
+      log(`[${'Playwright'.red}] Не удалось получить координаты кликабельного элемента.`);
+      await browser.close();
+      return;
     }
+
+    const clickX = box.x + box.width / 2;
+    const clickY = box.y + box.height / 2;
+    log(`[${'Playwright'.green}] Координаты клика: X=${clickX}, Y=${clickY}`);
+
+    // Кликаем
+    await page.mouse.move(clickX, clickY);
+    await page.mouse.click(clickX, clickY);
+
+    // Ждём редирект
+    let redirectHappened = false;
+    try {
+      await page.waitForNavigation({ timeout: 20000 });
+      redirectHappened = true;
+    } catch {
+      redirectHappened = false;
+    }
+
+    // Логируем результат
+    const finalTitle = await page.title();
+    if (redirectHappened) {
+      log(`[${'Playwright'.green}] Редирект произошёл. Новый тайтл: ${finalTitle}`);
+    } else {
+      log(`[${'Playwright'.yellow}] Редирект не произошёл. Тайтл остался: ${finalTitle}`);
+    }
+
+    log(`[${'Playwright'.blue}] Закрываю браузер.`);
+    await browser.close();
   } catch (e) {
     log(`[${'Playwright'.red}] Ошибка: ${e.message}`);
+    await browser.close();
   }
 }
-
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
         await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
