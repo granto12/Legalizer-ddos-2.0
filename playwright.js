@@ -206,10 +206,7 @@ async function processProtection(page, label) {
   if (detected) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
-
-
 const fs = require('fs');
-
 
 if (detected.name === "CloudFlare") {
   try {
@@ -262,7 +259,7 @@ if (detected.name === "CloudFlare") {
       log(`[${'Playwright'.green}] Первый клик X=${clickX}, Y=${clickY}`);
       await page.waitForTimeout(800);
 
-      // 2-й клик со случайным смещением
+      // 2-й клик со смещением
       const offsetX = Math.floor(Math.random() * 21) + 10;
       const offsetY = Math.floor(Math.random() * 11) - 5;
       const secondX = clickX + offsetX;
@@ -276,6 +273,13 @@ if (detected.name === "CloudFlare") {
       await page.mouse.move(clickX, clickY, { steps: 20 });
       await page.mouse.click(clickX, clickY);
       log(`[${'Playwright'.green}] Третий клик X=${clickX}, Y=${clickY}`);
+
+      // 4-й клик по фиксированным координатам
+      const fixedX = 145.5;
+      const fixedY = 225.5;
+      await page.mouse.move(fixedX, fixedY, { steps: 20 });
+      await page.mouse.click(fixedX, fixedY);
+      log(`[${'Playwright'.green}] Четвёртый клик X=${fixedX}, Y=${fixedY}`);
 
       // Ждём редирект
       let redirectHappened = true;
@@ -313,6 +317,7 @@ if (detected.name === "CloudFlare") {
     log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare: ${e.message}`);
   }
 }
+
 
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
