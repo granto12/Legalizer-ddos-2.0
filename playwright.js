@@ -107,15 +107,7 @@ async function solverInstance(args) {
     ]
   });
 
- await context.addCookies([{
-    name: 'ac_xf_user',
-    value: '229498',
-    domain: 'www.legalizer.com', // ← сюда вставь домен сайта
-    path: '/',
-    httpOnly: false,
-    secure: false,
-    sameSite: 'Lax'
-  }]);
+ 
 
   
   function getRandomUAConfig() {
@@ -142,6 +134,87 @@ async function solverInstance(args) {
 
   const uaConfig = getRandomUAConfig();
   log(`(${`UA`.cyan}) Используется профиль: ${uaConfig.name.green}`);
+
+async function solverInstance(args) {
+  log(`(${`PlayWright`.cyan}) Запуск браузера.`);
+
+  const browser = await playwright.chromium.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-features=site-per-process,IsolateOrigins',
+      '--disable-infobars',
+      '--no-first-run',
+      '--ignore-certificate-errors',
+      '--ignore-ssl-errors',
+      '--no-default-browser-check',
+      '--disable-popup-blocking',
+      '--disable-extensions',
+      '--disable-background-networking',
+      '--disable-background-timer-throttling',
+      '--disable-renderer-backgrounding',
+      '--disable-hang-monitor',
+      '--disable-sync',
+      '--metrics-recording-only',
+      '--disable-default-apps',
+      '--mute-audio',
+      '--no-zygote',
+      '--max-connections-per-host=6',
+      '--autoplay-policy=no-user-gesture-required',
+      '--disable-blink-features=AutomationControlled'
+    ]
+  });
+
+  function getRandomUAConfig() {
+    const configs = [
+      {
+        name: 'Windows Chrome',
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+        viewport: { width: 1920, height: 1080 },
+        deviceScaleFactor: 1,
+        isMobile: false,
+        hasTouch: false
+      },
+      {
+        name: 'iPhone Safari',
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true
+      }
+    ];
+    return configs[Math.floor(Math.random() * configs.length)];
+  }
+
+  // Выбираем рандомный UA
+  const uaConfig = getRandomUAConfig();
+  log(`[${'PlayWright'.blue}] Используем профиль: ${uaConfig.name}`);
+
+  // Создаём контекст с выбранным UA
+  const context = await browser.newContext({
+    userAgent: uaConfig.userAgent,
+    viewport: uaConfig.viewport,
+    deviceScaleFactor: uaConfig.deviceScaleFactor,
+    isMobile: uaConfig.isMobile,
+    hasTouch: uaConfig.hasTouch
+  });
+
+  // Добавляем куку перед переходом на сайт
+  await context.addCookies([{
+    name: 'ac_xf_user',
+    value: '229498',
+    domain: 'www.legalizer.com', // без https://
+    path: '/',
+    httpOnly: false,
+    secure: true,
+    sameSite: 'Lax'
+  }]);
+
+ 
 
   const context = await browser.newContext({
     userAgent: uaConfig.userAgent,
