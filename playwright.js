@@ -332,7 +332,7 @@ if (detected.name === "CloudFlare") {
   } catch (e) {
     log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare: ${e.message}`);
   }
-}
+
 
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
