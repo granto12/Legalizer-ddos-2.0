@@ -7,7 +7,7 @@ const baseArgs = {
   Time: "20",
   Method: "TLSv1",
   Rate: "20",
-  Threads: "2"
+  Threads: "2000"
 };
 
 
