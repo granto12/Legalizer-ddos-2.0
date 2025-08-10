@@ -209,10 +209,7 @@ async function processProtection(page, label) {
 
 
 const fs = require('fs');
-const Jimp = require('jimp');
 
-
-if (detected.name === "CloudFlare") {const fs = require('fs');
 
 if (detected.name === "CloudFlare") {
   try {
