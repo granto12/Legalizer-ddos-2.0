@@ -207,8 +207,7 @@ async function processProtection(page, label) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
 
-
-  if (detected.name === "CloudFlare") {
+if (detected.name === "CloudFlare") {
   try {
     let attempt = 1;
     let screenshotDone = false;
@@ -225,24 +224,25 @@ async function processProtection(page, label) {
         screenshotDone = true;
       }
 
-      // Ищем блок с нужными словами
-      const blockLocator = page.locator('text=Verify you are human').locator('..'); // родительский элемент
+      // Сначала ищем элемент с "privacy"
+      const privacyElement = page.locator('text=/privacy/i').first();
       let found = false;
 
       try {
-        await blockLocator.waitFor({ timeout: 30000 });
+        await privacyElement.waitFor({ timeout: 30000 });
+        const blockLocator = privacyElement.locator('..'); // Родительский элемент
         const blockText = await blockLocator.innerText();
-        if (blockText.toLowerCase().includes("verify you are human".toLowerCase()) &&
-            blockText.toLowerCase().includes("privacy")) {
+
+        if (blockText.toLowerCase().includes("verify you are human")) {
           found = true;
         }
       } catch {
-        log(`[${'Playwright'.red}] Блок с 'Verify you are human' не найден.`);
+        log(`[${'Playwright'.red}] Элемент с 'privacy' не найден.`);
       }
 
       if (!found) {
         const title = await page.title();
-        log(`[${'Playwright'.red}] Не найдена комбинация 'privacy' + 'Verify you are human'. Title: ${title}`);
+        log(`[${'Playwright'.red}] Не найден блок с 'privacy' и 'Verify you are human'. Title: ${title}`);
         if (attempt >= 2) {
           log(`[${'Playwright'.red}] После второй попытки комбинация не найдена. Закрываю браузер.`);
           await browser.close();
@@ -288,12 +288,10 @@ async function processProtection(page, label) {
       log(`[${'Playwright'.green}] Третий клик X=${clickX}, Y=${clickY}`);
 
       // Ждём редирект
-      let redirectHappened = true;
       try {
         await page.waitForNavigation({ timeout: 20000 });
         log(`[${'Playwright'.green}] Редирект произошёл.`);
       } catch {
-        redirectHappened = false;
         const title = await page.title();
         log(`[${'Playwright'.yellow}] Редирект не произошёл. Title: ${title}`);
         if (attempt >= 2) {
