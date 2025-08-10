@@ -142,7 +142,7 @@ async function solverInstance(args) {
 
 
   await context.setExtraHTTPHeaders({
-  'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+  'Accept-Language': 'en-US;q=0.8,en;q=0.7',
   'Upgrade-Insecure-Requests': '1',
   'Sec-Ch-Ua': '"Not:A-Brand";v="99", "Google Chrome";v="136", "Chromium";v="136"',
   'Sec-Ch-Ua-Mobile': uaConfig.isMobile ? '?1' : '?0',
