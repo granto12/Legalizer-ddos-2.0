@@ -2,6 +2,9 @@ const playwright = require('playwright');
 const colors = require('colors');
 const { spawn } = require('child_process');
 require('events').EventEmitter.defaultMaxListeners = Infinity;
+const fs = require('fs');
+
+
 
 const JSList = {
   js: [
@@ -13,7 +16,7 @@ const JSList = {
     {
       name: "CloudFlare",
       navigations: 1,
-      locate: '<title>Just a moment.../title>'
+      locate: '<title>Just a moment...</title>'
     },
     {
       name: "DDoS-Guard",
@@ -140,46 +143,21 @@ async function solverInstance(args) {
 
   const page = await context.newPage();
 
-
-  await context.setExtraHTTPHeaders({
-  'Accept-Language': 'en-US;q=0.8,en;q=0.7',
-  'Upgrade-Insecure-Requests': '1',
-  'Sec-Ch-Ua': '"Not:A-Brand";v="99", "Google Chrome";v="136", "Chromium";v="136"',
-  'Sec-Ch-Ua-Mobile': uaConfig.isMobile ? '?1' : '?0',
-  'Sec-Ch-Ua-Platform': uaConfig.isMobile ? '"iOS"' : '"Windows"'
-});
-
-// И тут же дополняем addInitScript
-await page.addInitScript(() => {
-  // Существующие твои подмены
-  Object.defineProperty(navigator, 'webdriver', { get: () => false });
-  window.chrome = { runtime: {} };
-  Object.defineProperty(navigator, 'languages', { get: () => ['ru-RU', 'ru'] });
-  Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
-
-  // Новый mimeTypes
-  Object.defineProperty(navigator, 'mimeTypes', {
-    get: () => [{ type: 'application/pdf', suffixes: 'pdf', description: '', enabledPlugin: {} }]
-  });
-
-  // Подмена Canvas fingerprint
-  const toDataURL = HTMLCanvasElement.prototype.toDataURL;
-  HTMLCanvasElement.prototype.toDataURL = function(...args) {
-    const ctx = this.getContext('2d');
-    ctx.fillStyle = '#f0f0f0';
-    ctx.fillRect(0, 0, this.width, this.height);
-    return toDataURL.apply(this, args);
-  };
-
-  // WebGL Vendor/Renderer
-  const getParameter = WebGLRenderingContext.prototype.getParameter;
-  WebGLRenderingContext.prototype.getParameter = function(parameter) {
-    if (parameter === 37445) return 'Intel Inc.';
-    if (parameter === 37446) return 'Intel Iris OpenGL Engine';
-    return getParameter.call(this, parameter);
-  };
-
-  
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    window.chrome = { runtime: {} };
+    Object.defineProperty(navigator, 'languages', {
+      get: () => ['ru-RU', 'ru']
+    });
+    Object.defineProperty(navigator, 'plugins', {
+      get: () => [1, 2, 3]
+    });
+    const getParameter = WebGLRenderingContext.prototype.getParameter;
+    WebGLRenderingContext.prototype.getParameter = function (parameter) {
+      if (parameter === 37445) return 'Intel Inc.';
+      if (parameter === 37446) return 'Intel Iris OpenGL Engine';
+      return getParameter.call(this, parameter);
+    };
     const originalQuery = window.navigator.permissions.query;
     window.navigator.permissions.query = (parameters) => (
       parameters.name === 'notifications'
@@ -228,7 +206,10 @@ async function processProtection(page, label) {
   if (detected) {
     log(`(${label.green}) защита: ${detected.name.yellow}`);
 
- const fs = require('fs');
+
+
+const fs = require('fs');
+
 
 if (detected.name === "CloudFlare") {
   try {
@@ -281,7 +262,7 @@ if (detected.name === "CloudFlare") {
       log(`[${'Playwright'.green}] Первый клик X=${clickX}, Y=${clickY}`);
       await page.waitForTimeout(800);
 
-      // 2-й клик со смещением
+      // 2-й клик со случайным смещением
       const offsetX = Math.floor(Math.random() * 21) + 10;
       const offsetY = Math.floor(Math.random() * 11) - 5;
       const secondX = clickX + offsetX;
@@ -295,13 +276,6 @@ if (detected.name === "CloudFlare") {
       await page.mouse.move(clickX, clickY, { steps: 20 });
       await page.mouse.click(clickX, clickY);
       log(`[${'Playwright'.green}] Третий клик X=${clickX}, Y=${clickY}`);
-
-      // 4-й клик по фиксированным координатам
-      const fixedX = 145.5;
-      const fixedY = 225.5;
-      await page.mouse.move(fixedX, fixedY, { steps: 20 });
-      await page.mouse.click(fixedX, fixedY);
-      log(`[${'Playwright'.green}] Четвёртый клик X=${fixedX}, Y=${fixedY}`);
 
       // Ждём редирект
       let redirectHappened = true;
@@ -329,7 +303,7 @@ if (detected.name === "CloudFlare") {
       }
 
       if (title.trim() === 'Just a moment...') {
-        log(`[${'Playwright'.yellow}] u, повторяю процедуру...`);
+        log(`[${'Playwright'.yellow}] Just a moment..., повторяю процедуру...`);
         attempt++;
         continue;
       }
@@ -339,8 +313,7 @@ if (detected.name === "CloudFlare") {
     log(`[${'Playwright'.red}] Ошибка при обработке CloudFlare: ${e.message}`);
   }
 }
-      
-      
+
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
         await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
