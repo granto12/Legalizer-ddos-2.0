@@ -211,13 +211,10 @@ async function processProtection(page, label) {
       for (let attempt = 1; attempt <= maxAttempts && !redirectHappened; attempt++) {
         log(`[${'Playwright'.cyan}] Попытка обхода Turnstile: ${attempt}/${maxAttempts}`);
   
-        // Ждём появления iframe
         let frame = null;
         for (let i = 0; i < 5 && !frame; i++) {
           frame = page.frames().find(f => f.url().includes('challenges.cloudflare.com'));
-          if (!frame) {
-            await sleep(2000);
-          }
+          if (!frame) await sleep(2000);
         }
   
         if (!frame) {
@@ -225,47 +222,44 @@ async function processProtection(page, label) {
           continue;
         }
   
-        // Ждём чекбокс
         const checkbox = await frame.waitForSelector('input[type="checkbox"]', { timeout: 5000 }).catch(() => null);
         if (!checkbox) {
           log(`[${'Playwright'.red}] Чекбокс Turnstile не найден во фрейме.`);
           continue;
         }
   
-        // Получаем координаты
         const box = await checkbox.boundingBox();
         if (!box) {
           log(`[${'Playwright'.red}] Не удалось получить координаты чекбокса Turnstile.`);
           continue;
         }
   
-        // Плавное движение и клик
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 15 });
         await sleep(300 + Math.random() * 500);
         await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { delay: 100 + Math.random() * 100 });
   
-        // Ждём навигацию
-        try {
-          const response = await page.waitForNavigation({ timeout: 8000 });
-          if (response) {
-            log(`[${'Playwright'.green}] Навигация прошла успешно`);
-            redirectHappened = true;
-          } else {
-            log(`[${'Playwright'.yellow}] Редирект не произошёл`);
-          }
-        } catch {
-          log(`[${'Playwright'.yellow}] Навигация не произошла`);
+        // Ждём либо навигации, либо исчезновения iframe
+        await Promise.race([
+          page.waitForNavigation({ timeout: 8000 }).catch(() => null),
+          frame.waitForSelector('input[type="checkbox"]', { state: 'detached', timeout: 8000 }).catch(() => null)
+        ]);
+  
+        const currentTitle = await page.title();
+        if (currentTitle !== "Just a moment...") {
+          log(`[${'Playwright'.green}] Капча пройдена, title: "${currentTitle}"`);
+          redirectHappened = true;
+        } else {
+          log(`[${'Playwright'.yellow}] Капча не пройдена, title всё ещё: "${currentTitle}"`);
         }
   
         await sleep(2000);
       }
   
-      // Если не получилось
       if (!redirectHappened) {
-        log(`[${'Playwright'.red}] Не удалось пройти Turnstile. Жду 10 секунд перед логом заголовка...`);
+        log(`[${'Playwright'.red}] Не удалось пройти Turnstile. Жду 10 секунд...`);
         await sleep(10000);
         const title = await page.title();
-        log(`[${'Playwright'.red}] Title страницы: "${title}"`);
+        log(`[${'Playwright'.red}] Итоговый title страницы: "${title}"`);
         await page.context().browser().close();
         return;
       }
@@ -276,12 +270,12 @@ async function processProtection(page, label) {
       log(`[${'Playwright'.red}] Ошибка при обработке Turnstile: ${e.message}`);
       await sleep(10000);
       const title = await page.title();
-      log(`[${'Playwright'.red}] Title страницы: "${title}"`);
+      log(`[${'Playwright'.red}] Итоговый title страницы: "${title}"`);
       await page.context().browser().close();
     }
   }
 
-  
+
     if (["DDoS-Guard", "DDoS-Guard-en"].includes(detected.name)) {
       for (let i = 0; i < 5; i++) {
         await page.mouse.move(randomIntFromInterval(0, 100), randomIntFromInterval(0, 100));
