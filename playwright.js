@@ -140,21 +140,46 @@ async function solverInstance(args) {
 
   const page = await context.newPage();
 
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, 'webdriver', { get: () => false });
-    window.chrome = { runtime: {} };
-    Object.defineProperty(navigator, 'languages', {
-      get: () => ['ru-RU', 'ru']
-    });
-    Object.defineProperty(navigator, 'plugins', {
-      get: () => [1, 2, 3]
-    });
-    const getParameter = WebGLRenderingContext.prototype.getParameter;
-    WebGLRenderingContext.prototype.getParameter = function (parameter) {
-      if (parameter === 37445) return 'Intel Inc.';
-      if (parameter === 37446) return 'Intel Iris OpenGL Engine';
-      return getParameter.call(this, parameter);
-    };
+
+  await context.setExtraHTTPHeaders({
+  'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+  'Upgrade-Insecure-Requests': '1',
+  'Sec-Ch-Ua': '"Not:A-Brand";v="99", "Google Chrome";v="136", "Chromium";v="136"',
+  'Sec-Ch-Ua-Mobile': uaConfig.isMobile ? '?1' : '?0',
+  'Sec-Ch-Ua-Platform': uaConfig.isMobile ? '"iOS"' : '"Windows"'
+});
+
+// И тут же дополняем addInitScript
+await page.addInitScript(() => {
+  // Существующие твои подмены
+  Object.defineProperty(navigator, 'webdriver', { get: () => false });
+  window.chrome = { runtime: {} };
+  Object.defineProperty(navigator, 'languages', { get: () => ['ru-RU', 'ru'] });
+  Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
+
+  // Новый mimeTypes
+  Object.defineProperty(navigator, 'mimeTypes', {
+    get: () => [{ type: 'application/pdf', suffixes: 'pdf', description: '', enabledPlugin: {} }]
+  });
+
+  // Подмена Canvas fingerprint
+  const toDataURL = HTMLCanvasElement.prototype.toDataURL;
+  HTMLCanvasElement.prototype.toDataURL = function(...args) {
+    const ctx = this.getContext('2d');
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, this.width, this.height);
+    return toDataURL.apply(this, args);
+  };
+
+  // WebGL Vendor/Renderer
+  const getParameter = WebGLRenderingContext.prototype.getParameter;
+  WebGLRenderingContext.prototype.getParameter = function(parameter) {
+    if (parameter === 37445) return 'Intel Inc.';
+    if (parameter === 37446) return 'Intel Iris OpenGL Engine';
+    return getParameter.call(this, parameter);
+  };
+
+  
     const originalQuery = window.navigator.permissions.query;
     window.navigator.permissions.query = (parameters) => (
       parameters.name === 'notifications'
