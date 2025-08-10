@@ -250,7 +250,7 @@ if (detected.name === "CloudFlare") {
         attempt++;
         continue;
       }
-    
+
       // Если title другой — значит проверка пройдена
       log(`[${'Playwright'.green}] Проверка пройдена.`);
       break;
