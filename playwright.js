@@ -207,6 +207,7 @@ async function processProtection(page, label) {
 if (detected.name === "CloudFlare") {
   try {
     let attempt = 1;
+    let screenshotDone = false; // чтобы сделать скрин только один раз
 
     while (true) {
       log(`[${'Playwright'.yellow}] Попытка #${attempt}...`);
@@ -222,29 +223,42 @@ if (detected.name === "CloudFlare") {
 
       log(`[${'Playwright'.green}] Найдена надпись "Verify you are human".`);
 
-      // Получаем координаты элемента
+      // Делаем скриншот только на второй попытке и только один раз
+      if (attempt === 2 && !screenshotDone) {
+        const screenshotPath = `verify_attempt_${Date.now()}.png`;
+        await page.screenshot({ path: screenshotPath, fullPage: true });
+        log(`[${'Playwright'.green}] Скриншот сохранён: ${screenshotPath}`);
+        screenshotDone = true;
+      }
+
+      // Получаем координаты первой буквы текста
       const box = await verifyElement.boundingBox();
       if (!box) {
         log(`[${'Playwright'.red}] Не удалось получить координаты надписи.`);
         break;
       }
 
-      // Считаем координаты: 20px левее центра по X
-      const clickX = box.x + box.width / 2 - 20;
+      // Клик на 10px левее первой буквы
+      const clickX = box.x - 10;
       const clickY = box.y + box.height / 2;
 
       log(`[${'Playwright'.green}] Клик по координатам X=${clickX}, Y=${clickY}`);
       await page.mouse.move(clickX, clickY, { steps: 15 });
       await page.mouse.click(clickX, clickY);
 
-      // Ждём 5 секунд
-      await page.waitForTimeout(5000);
+      // Ждём редирект
+      try {
+        await page.waitForNavigation({ timeout: 20000 });
+        log(`[${'Playwright'.green}] Редирект произошёл.`);
+      } catch {
+        log(`[${'Playwright'.yellow}] Редирект не произошёл, продолжаю.`);
+      }
 
       // Получаем title
       const title = await page.title();
       log(`[${'Playwright'.green}] Title страницы: ${title}`);
 
-      // Если Just a moment..., повторяем заново
+      // Если Just a moment..., пробуем снова
       if (title.trim() === 'Just a moment...') {
         log(`[${'Playwright'.yellow}] Страница всё ещё "Just a moment...", повторяю процедуру...`);
         attempt++;
